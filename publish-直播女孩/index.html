@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>迷糊直播间</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="game.js"></script>
+</head>
+
+<body x-data="">
+    <!-- 加载页面 -->
+    <div x-show="$store.game.loading" class="loading-container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p class="loading-text" x-text="$store.game.loadingText">正在连接直播间...</p>
+            <button class="skip-btn" x-show="$store.game.showSkipBtn" @click="$store.game.skipLoading()" x-transition
+                style="display: none;">
+                ⏭ 跳过加载
+            </button>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+        <div class="card">
+            <h1>📺 迷糊直播间</h1>
+            <p class="subtitle">欢迎来到小雨的直播间~</p>
+
+            <div class="form-group">
+                <label>你的昵称：</label>
+                <input x-model="$store.game.playerName" placeholder="请输入观众昵称" />
+            </div>
+
+            <div class="form-group">
+                <label>选择模型：</label>
+                <select x-model="$store.game.model">
+                    <option value="nalang-turbo-0826">nalang-turbo-0826 (快速)</option>
+                    <option value="nalang-medium-0826">nalang-medium-0826 (平衡)</option>
+                    <option value="nalang-max-0826">nalang-max-0826 (高质量)</option>
+                    <option value="nalang-xl-0826">nalang-xl-0826 (推荐)</option>
+                </select>
+            </div>
+
+            <button @click="$store.game.start()" :disabled="!$store.game.playerName" class="start-btn">
+                🎬 进入直播间
+            </button>
+            <button class="ghost-btn" @click="$store.game.openSaveManager(true)">
+                💾 读取存档
+            </button>
+
+            <!-- 玩法说明 -->
+            <div class="rules-section">
+                <div class="rules-header" @click="$store.game.rulesExpanded = !$store.game.rulesExpanded">
+                    <span>📖 玩法说明</span>
+                    <span x-text="$store.game.rulesExpanded ? '收起 ▲' : '展开 ▼'"></span>
+                </div>
+                <div class="rules-content" x-show="$store.game.rulesExpanded" x-transition>
+                    <ul>
+                        <li><b>主播设定</b>：小雨是一个迷糊的游戏主播，经常穿着不当开播</li>
+                        <li><b>弹幕互动</b>：在输入框发送弹幕与主播互动</li>
+                        <li><b>送礼物</b>：可以送礼物请求主播展示特定部位或使用道具</li>
+                        <li><b>特写请求</b>：胸部、小穴、腋下、足部等特写会触发相应图片</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="game">
+        <!-- 顶部状态栏 -->
+        <div class="topbar">
+            <div class="stream-info">
+                <span class="live-badge">🔴 LIVE</span>
+                <span class="streamer-name">小雨的直播间</span>
+            </div>
+            <div class="top-actions">
+                <button class="smallbtn ghost" @click="$store.game.openGiftModal()" :disabled="$store.game.disabled">
+                    🎁 送礼物
+                </button>
+                <button class="smallbtn ghost" @click="$store.game.openSaveManager(false)"
+                    :disabled="$store.game.disabled">
+                    💾 存档
+                </button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 消息列表 -->
+            <div class="chat-panel" id="chatPanel">
+                <template x-for="(msg, index) in $store.game.messages" :key="msg.id">
+                    <div class="message" :class="[msg.role, msg.isGift ? 'gift' : '']">
+                        <div class="msg-header">
+                            <span class="msg-author"
+                                x-text="msg.role === 'user' ? $store.game.playerName : '🎀 小雨'"></span>
+                            <div class="msg-actions" x-show="!$store.game.disabled">
+                                <button class="action-btn" @click="$store.game.editMessage(index)" title="编辑"
+                                    x-show="!msg.isGift">✏️</button>
+                                <button class="action-btn" @click="$store.game.deleteMessage(index)"
+                                    title="删除">🗑️</button>
+                                <button class="action-btn"
+                                    x-show="msg.role === 'assistant' && index === $store.game.messages.length - 1"
+                                    @click="$store.game.regenerateLastMessage()" title="重新生成">🔄</button>
+                            </div>
+                        </div>
+                        <div class="msg-content" x-html="msg.content"></div>
+                        <!-- 附加图片 -->
+                        <div class="msg-images" x-show="msg.images && msg.images.length > 0">
+                            <template x-for="img in msg.images || []" :key="img">
+                                <img :src="img" class="attached-image" @click="$store.game.showImageModal(img)">
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <!-- 加载中指示器 -->
+                <div class="message assistant" x-show="$store.game.isGenerating">
+                    <div class="msg-header">
+                        <span class="msg-author">🎀 小雨</span>
+                    </div>
+                    <div class="msg-content typing">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <input x-model="$store.game.input" placeholder="发送弹幕..." :disabled="$store.game.disabled"
+                    @keydown.enter="$store.game.sendMessage()" />
+                <button @click="$store.game.sendMessage()"
+                    :disabled="$store.game.disabled || !$store.game.input.trim()">
+                    发送
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 存档管理弹窗 -->
+    <div class="modal-mask" x-show="$store.game.saveManager.open" x-transition style="display: none;">
+        <div class="modal">
+            <div class="modal-head">
+                <div class="modal-title">💾 存档管理</div>
+                <button class="modal-close" @click="$store.game.saveManager.open=false">✕</button>
+            </div>
+            <div class="modal-body save-body">
+                <template x-for="slot in [1,2,3]" :key="slot">
+                    <div class="save-slot">
+                        <div class="save-info">
+                            <div class="save-name">存档 <span x-text="slot"></span></div>
+                            <div class="save-meta" x-text="$store.game.getSaveInfo(slot)"></div>
+                        </div>
+                        <div class="save-actions">
+                            <button class="smallbtn" @click="$store.game.manualSave(slot)"
+                                :disabled="!$store.game.started">保存</button>
+                            <button class="smallbtn ghost" @click="$store.game.manualLoad(slot)">读取</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息编辑弹窗 -->
+    <div class="modal-mask" x-show="$store.game.editModal.open" x-transition style="display: none;">
+        <div class="modal">
+            <div class="modal-head">
+                <div class="modal-title">✏️ 编辑消息</div>
+                <button class="modal-close" @click="$store.game.editModal.open=false">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea x-model="$store.game.editModal.content" class="edit-textarea" rows="5"></textarea>
+                <div class="modal-actions">
+                    <button class="smallbtn" @click="$store.game.confirmEdit()">确认</button>
+                    <button class="smallbtn ghost" @click="$store.game.editModal.open=false">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal-mask" x-show="$store.game.deleteModal.open" x-transition style="display: none;">
+        <div class="modal small">
+            <div class="modal-head">
+                <div class="modal-title">🗑️ 确认删除</div>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这条消息吗？此操作不可撤销。</p>
+                <div class="modal-actions">
+                    <button class="smallbtn danger" @click="$store.game.confirmDelete()">删除</button>
+                    <button class="smallbtn ghost" @click="$store.game.deleteModal.open=false">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 送礼物弹窗 -->
+    <div class="modal-mask gift-modal" x-show="$store.game.giftModal.open" x-transition
+        @click.self="$store.game.giftModal.open=false" style="display: none;">
+        <div class="modal gift-modal-content">
+            <div class="modal-head">
+                <div class="modal-title">🎁 送礼物</div>
+                <button class="modal-close" @click="$store.game.giftModal.open=false">✕</button>
+            </div>
+            <div class="modal-body gift-body">
+                <div class="gift-grid">
+                    <template x-for="gift in $store.game.gifts" :key="gift.id">
+                        <div class="gift-item" :class="{ selected: $store.game.selectedGift?.id === gift.id }"
+                            @click="$store.game.selectGift(gift)">
+                            <div class="gift-icon" x-text="gift.icon"></div>
+                            <div class="gift-name" x-text="gift.name"></div>
+                            <div class="gift-price" x-text="gift.price + '钻'"></div>
+                        </div>
+                    </template>
+                </div>
+                <div class="gift-message-area">
+                    <label>附加弹幕：</label>
+                    <input x-model="$store.game.giftMessage" placeholder="说点什么..." />
+                </div>
+                <button class="send-gift-btn" @click="$store.game.sendGift()"
+                    :disabled="!$store.game.selectedGift || $store.game.disabled">
+                    送出礼物
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片查看弹窗 -->
+    <div class="modal-mask image-modal" x-show="$store.game.imageModal.open" x-transition
+        @click="$store.game.imageModal.open=false" style="display: none;">
+        <img :src="$store.game.imageModal.src" class="fullscreen-image">
+    </div>
+
+    <!-- Debug 浮动按钮 
+    <div class="debug-btn" @click="$store.game.debugPanel.open = !$store.game.debugPanel.open"
+        x-text="$store.game.debugPanel.open ? '🔧' : '🐛'">
+    </div>
+    -->
+
+    <!-- Debug 面板 
+    <div class="debug-panel" x-show="$store.game.debugPanel.open" x-transition style="display: none;">
+        <div class="debug-header">
+            <span>🐛 Debug 日志</span>
+            <div class="debug-actions">
+                <button class="debug-action-btn" @click="$store.game.copyLogs()">📋 复制</button>
+                <button class="debug-action-btn" @click="$store.game.clearLogs()">🗑️ 清空</button>
+                <button class="debug-action-btn" @click="$store.game.debugPanel.open=false">✕</button>
+            </div>
+        </div>
+        <div class="debug-content">
+            <template x-for="(log, i) in $store.game.debugLogs" :key="i">
+                <div class="debug-log" :class="log.type">
+                    <span class="log-time" x-text="log.time"></span>
+                    <span class="log-type" x-text="'[' + log.type.toUpperCase() + ']'"></span>
+                    <span class="log-msg" x-text="log.message"></span>
+                </div>
+            </template>
+            <div class="debug-log info" x-show="$store.game.debugLogs.length === 0">
+                暂无日志
+            </div>
+        </div>
+    </div>
+    -->
+</body>
+
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>系统任务</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="app.js"></script>
+</head>
+
+<body x-data="">
+    <!-- 加载中状态 -->
+    <div x-show="$store.game.loading" class="loading-container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p>系统初始化中...</p>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+        <div class="card">
+            <h1>🔗 系统任务</h1>
+            <p class="subtitle">你是神秘的"系统"，将对目标发布各种任务...</p>
+
+            <div class="form-group">
+                <label>目标姓名：</label>
+                <input x-model="$store.game.target_name" placeholder="请输入目标的名字" />
+            </div>
+
+            <!-- 身份设定编辑区 -->
+            <div class="identity-settings">
+                <h4>📝 身份设定（可手动修改）</h4>
+                <div class="form-group">
+                    <label>性格描述：</label>
+                    <textarea x-model="$store.game.identity_settings.personality" rows="3"
+                        placeholder="描述目标的性格特征..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>外貌特征：</label>
+                    <textarea x-model="$store.game.identity_settings.appearance" rows="2"
+                        placeholder="描述目标的外貌..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>背景故事：</label>
+                    <textarea x-model="$store.game.identity_settings.background" rows="3"
+                        placeholder="描述目标的背景..."></textarea>
+                </div>
+            </div>
+
+            <button @click="$store.game.start()" :disabled="!$store.game.target_name">
+                🎮 启动系统
+            </button>
+
+            <div class="instructions">
+                <h3>系统说明：</h3>
+                <ul>
+                    <li>你是发布任务的"系统"</li>
+                    <li>点击【继续】让女主执行当前任务</li>
+                    <li>点击【发布任务】自定义新任务</li>
+                    <li>发布时需设定任务目标、惩罚、奖励</li>
+                    <li>目标会在目标和惩罚之间权衡</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="game">
+        <!-- 角色状态面板 -->
+        <div class="character-panel">
+            <div class="panel-header" @click="$store.game.showStatus = !$store.game.showStatus">
+                <span>📋 状态详情</span>
+                <span x-text="$store.game.showStatus ? '▼' : '▶'"></span>
+            </div>
+            <div class="panel-content" x-show="$store.game.showStatus" x-transition>
+                <!-- 淫荡值 -->
+                <div class="status-section stat-section-full">
+                    <h4>💗 淫荡值</h4>
+                    <div class="progress-bar-large lewdness">
+                        <div class="progress-fill" :style="`width: ${$store.game.lewdness || 0}%`"></div>
+                    </div>
+                    <span class="stat-value-large" x-text="$store.game.lewdness || 0"></span>
+                </div>
+                <!-- 羞耻度 -->
+                <div class="status-section stat-section-full">
+                    <h4>😳 羞耻度</h4>
+                    <div class="progress-bar-large shame">
+                        <div class="progress-fill" :style="`width: ${$store.game.shame || 0}%`"></div>
+                    </div>
+                    <span class="stat-value-large" x-text="$store.game.shame || 0"></span>
+                </div>
+                <div class="status-section">
+                    <h4>👗 当前衣着</h4>
+                    <p x-text="$store.game.clothing || '普通便装'"></p>
+                </div>
+                <div class="status-section">
+                    <h4>🎀 穿戴道具</h4>
+                    <p x-text="$store.game.accessories || '无'"></p>
+                </div>
+                <div class="status-section">
+                    <h4>📍 当前位置</h4>
+                    <p x-text="$store.game.location || '家中'"></p>
+                </div>
+                <div class="status-section">
+                    <h4>🎯 当前任务</h4>
+                    <p x-text="$store.game.current_task || '等待系统发布...'"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="dialogue-area">
+            <div class="dialogue-scroll" id="dialogue-scroll">
+                <div class="message system-message" x-show="$store.game.system_message">
+                    <div class="message-header">
+                        <span class="sender system">【系统】</span>
+                    </div>
+                    <div class="message-content" x-html="$store.game.system_message"></div>
+                </div>
+                <div class="message target-message" x-show="$store.game.chat_content">
+                    <div class="message-header">
+                        <span class="sender target" x-text="'【' + ($store.game.target_name || '目标') + '】'"></span>
+                        <span class="mood-tag" x-text="$store.game.mood || ''"></span>
+                    </div>
+                    <div class="message-content" x-html="$store.game.chat_content || '...'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 按钮区域 -->
+        <div class="button-area">
+            <button class="continue-btn" @click="$store.game.continue()" :disabled="$store.game.disabled">
+                ▶ 继续
+            </button>
+            <button class="publish-btn" @click="$store.game.showPublishModal = true" :disabled="$store.game.disabled">
+                📋 发布任务
+            </button>
+        </div>
+    </div>
+
+    <!-- 发布任务弹窗 -->
+    <div x-show="$store.game.showPublishModal" class="modal-overlay" x-transition>
+        <div class="modal-card" @click.away="$store.game.showPublishModal = false">
+            <div class="modal-header">
+                <h3>📋 发布新任务</h3>
+                <button class="close-btn" @click="$store.game.showPublishModal = false">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>任务目标：</label>
+                    <textarea x-model="$store.game.new_task.goal" rows="3" placeholder="描述需要完成的任务内容..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>惩罚内容：</label>
+                    <textarea x-model="$store.game.new_task.punishment" rows="2"
+                        placeholder="拒绝任务时会受到的惩罚..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>奖励内容：</label>
+                    <textarea x-model="$store.game.new_task.reward" rows="2" placeholder="完成任务后的奖励..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" @click="$store.game.showPublishModal = false">取消</button>
+                <button class="confirm-btn" @click="$store.game.publishTask()">发布</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,107 @@
+/**
+ * 小红书文案生成器
+ *
+ * 使用 DZMM completions API 生成内容
+ *
+ * 自定义指南：
+ * 1. 修改 createPrompt() 函数来自定义 AI 提示词
+ * 2. 可以修改 maxTokens 控制输出长度
+ */
+
+document.addEventListener('alpine:init', () => {
+  Alpine.data('xiaohongshu', () => ({
+    userInput: '',
+    isGenerating: false,
+    currentContent: '',
+
+    /**
+     * 初始化 - 等待 DZMM API 就绪
+     */
+    async init() {
+      await new Promise((resolve) => {
+        const handler = (event) => {
+          if (event.data?.type === 'dzmm:ready') {
+            window.removeEventListener('message', handler);
+            resolve();
+          }
+        };
+        window.addEventListener('message', handler);
+      });
+    },
+
+    /**
+     * 渲染 Markdown
+     */
+    renderMarkdown(text) {
+      if (!window.marked || !text) return '';
+      try {
+        if (!window.marked._configured) {
+          window.marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false,
+          });
+          window.marked._configured = true;
+        }
+        return window.marked.parse(text);
+      } catch (error) {
+        return text;
+      }
+    },
+
+    /**
+     * 创建 AI 提示词 - 可自定义
+     */
+    createPrompt(topic) {
+      return `你是小红书内容创作专家。请根据主题"${topic}"创作一篇吸引人的小红书内容。
+
+要求：
+1. 使用markdown格式输出
+2. 标题要吸引眼球（使用emoji和数字）
+3. 内容要实用具体，有价值
+4. 适当使用emoji让内容更生动
+5. 使用分点、加粗等格式提高可读性
+6. 控制在300-500字左右
+
+直接输出内容，不要有额外的说明。`;
+    },
+
+    /**
+     * 生成内容
+     */
+    async generateContent() {
+      if (this.isGenerating) return;
+
+      const topic = this.userInput.trim();
+      if (!topic || topic.length > 200) return;
+
+      this.isGenerating = true;
+      this.currentContent = '';
+
+      try {
+        await window.dzmm.completions(
+          {
+            model: 'nalang-xl-0826-10k',
+            messages: [
+              { role: 'user', content: this.createPrompt(topic) }
+            ],
+            maxTokens: 1500,
+          },
+          (newContent, done) => {
+            this.currentContent = newContent;
+
+            if (done) {
+              this.userInput = '';
+              this.isGenerating = false;
+            }
+          }
+        );
+      } catch (error) {
+        console.error('生成失败:', error);
+        this.isGenerating = false;
+        this.currentContent = '';
+      }
+    }
+  }));
+});

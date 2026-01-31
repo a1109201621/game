@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>小红书文案生成器</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="app.js"></script>
+</head>
+
+<body>
+    <div class="container" x-data="xiaohongshu">
+        <div class="header">
+            <h1>📱 小红书文案生成器</h1>
+            <p class="subtitle">输入关键词，AI 帮你创作爆款内容</p>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-section">
+            <textarea x-model="userInput" placeholder="输入你想要创作的主题，比如：夏日防晒、咖啡探店、职场穿搭..." rows="3"
+                maxlength="200"></textarea>
+            <div class="input-footer">
+                <div class="char-count" :class="{ over: userInput.length > 200 }">
+                    <span x-text="userInput.length"></span> / 200
+                </div>
+                <button class="generate-btn" @click="generateContent"
+                    :disabled="isGenerating || userInput.trim().length === 0">
+                    <span x-show="!isGenerating">✨ 生成内容</span>
+                    <span x-show="isGenerating">生成中...</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 内容展示 -->
+        <div class="content-area" x-show="currentContent">
+            <div class="post-card" :class="{ generating: isGenerating }">
+                <div class="post-body" x-html="renderMarkdown(currentContent)"></div>
+            </div>
+        </div>
+
+        <div class="empty-state" x-show="!currentContent && !isGenerating" x-cloak>
+            <span class="empty-icon">💡</span>
+            <p>输入主题，开始创作你的小红书内容</p>
+        </div>
+    </div>
+</body>
+
+</html>
