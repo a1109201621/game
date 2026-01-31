@@ -441,21 +441,24 @@ ${this.playerName}是这里的老板。今天是新的一天，阳光透过大�
                     maxTokens: Math.min(2000, this.replyLength + 200)
                 }, (chunk, done) => {
                     const content = chunk || '';
-                    self.streamingContent = '';
-                    self.streamingContent = content;
+                    // 流式显示时移除 STATE 块
+                    self.streamingContent = self.removeStateFromContent(content);
                     self.scrollToBottom();
 
                     if (done) {
+                        // 先处理 STATE 格式的消费信息
+                        self.detectAndProcessPurchases(content);
+
+                        // 移除 STATE 块，只保留故事内容
+                        const cleanContent = self.removeStateFromContent(content);
+
                         self.messages = [...self.messages, {
                             id: Date.now(),
                             role: 'assistant',
-                            content: content
+                            content: cleanContent
                         }];
                         self.streamingContent = '';
                         self.isGenerating = false;
-
-                        // 检测并处理购买行为
-                        self.detectAndProcessPurchases(content);
                     }
                 });
             } catch (e) {
@@ -466,35 +469,65 @@ ${this.playerName}是这里的老板。今天是新的一天，阳光透过大�
             }
         },
 
-        // 检测回复中的购买行为并自动扣款
+        // 解析回复中的 STATE 格式并处理消费
         detectAndProcessPurchases(content) {
-            // 匹配购买相关的金额格式：花费¥XX元、花费XX元、花了XX元、支付XX元等
-            const purchasePatterns = [
-                /(.{1,8})(?:花费|花了|支付|付了|消费)¥?(\d+)元?/g,
-                /(.{1,8})(?:购买|买了).+?¥?(\d+)元?/g
-            ];
+            // 匹配 ###STATE ... ###END 格式
+            const stateMatch = content.match(/###STATE\s*([\s\S]*?)\s*###END/);
+            if (!stateMatch) {
+                console.log('未检测到 STATE 格式');
+                return null;
+            }
 
-            for (const pattern of purchasePatterns) {
-                let match;
-                while ((match = pattern.exec(content)) !== null) {
-                    const context = match[1];
-                    const amount = parseInt(match[2]);
+            try {
+                const stateJson = stateMatch[1].trim();
+                const state = JSON.parse(stateJson);
 
-                    if (amount > 0) {
-                        // 尝试从上下文中找到房客
-                        const activeGuests = this.guests.filter(g => g.status === 'active');
-                        for (const guest of activeGuests) {
-                            if (guest.name && context.includes(guest.name.substring(0, 2))) {
-                                if (guest.money >= amount) {
-                                    guest.money -= amount;
-                                    console.log(`自动扣款：${guest.name} 花费 ¥${amount}，剩余 ¥${guest.money}`);
+                // 处理消费记录
+                if (state.spending && Array.isArray(state.spending) && state.spending.length > 0) {
+                    state.spending.forEach(spend => {
+                        if (spend.amount && spend.amount > 0) {
+                            let guest = null;
+
+                            // 优先按房间号查找
+                            if (spend.room) {
+                                guest = this.guests.find(g => g.roomNumber === spend.room && g.status === 'active');
+                            }
+
+                            // 按姓名查找
+                            if (!guest && spend.guest) {
+                                guest = this.guests.find(g => g.name && g.name.includes(spend.guest) && g.status === 'active');
+                            }
+
+                            if (guest) {
+                                if (guest.money >= spend.amount) {
+                                    guest.money -= spend.amount;
+                                    console.log(`✅ 扣款成功：${guest.name} 购买 ${spend.item || '物品'}，花费 ¥${spend.amount}，剩余 ¥${guest.money}`);
+                                } else {
+                                    console.log(`⚠️ 金钱不足：${guest.name} 尝试消费 ¥${spend.amount}，但只有 ¥${guest.money}`);
                                 }
-                                break;
+                            } else {
+                                console.log(`❌ 未找到房客：${spend.guest || '未知'} (房间 ${spend.room || '未知'})`);
                             }
                         }
-                    }
+                    });
                 }
+
+                // 处理时间推进（如果需要）
+                if (state.time_passed === true) {
+                    // 可选：自动推进时间
+                    // this.advanceTime();
+                }
+
+                return state;
+            } catch (e) {
+                console.error('解析 STATE 失败:', e);
+                return null;
             }
+        },
+
+        // 从回复中移除 STATE 块，只保留故事内容
+        removeStateFromContent(content) {
+            return content.replace(/###STATE[\s\S]*?###END\s*/g, '').trim();
         },
 
         // ========== 提示词构建 ==========
@@ -569,6 +602,16 @@ ${this.playerName}是这里的老板。今天是新的一天，阳光透过大�
         },
 
         buildSystemPrompt() {
+            // 获取当前活跃房客的金钱信息摘要
+            const activeGuests = this.guests.filter(g => g.status === 'active');
+            let guestMoneyInfo = '';
+            if (activeGuests.length > 0) {
+                guestMoneyInfo = '\n【当前房客金钱状况】\n';
+                activeGuests.forEach(g => {
+                    guestMoneyInfo += `- ${g.roomNumber}号房 ${g.name}：剩余¥${g.money || 0}\n`;
+                });
+            }
+
             return `【系统设定】
 你是一个旅馆互动小说的AI叙述者，以上帝视角进行叙事。
 
@@ -583,15 +626,15 @@ ${this.playerName}是这里的老板。今天是新的一天，阳光透过大�
 - ${this.playerName}是旅馆老板，发现了《旅馆规则之书》
 - 被改写的规则会影响所有人的认知和行为
 - 当前是第${this.gameTime.day}天${this.gameTime.periodName}
-
-【金钱系统】
-- 每位房客入住时会携带一定金钱（已扣除预付租金）
+${guestMoneyInfo}
+【金钱系统规则】
 - 房客可以在旅馆内购买物品或服务
-- 当剧情中涉及房客购买东西时，请在描述中明确写出：
-  * 购买者姓名或房间号
-  * 购买的物品/服务名称
-  * 花费金额（格式：花费¥XXX元）
-- 示例：「林小雨从钱包里掏出钱，购买了一份精致的甜点，花费¥50元。」
+- 购买时需要检查房客剩余金钱是否足够
+- 如果金钱不足，房客可能会：
+  * 请求老板宽限几天再付款
+  * 提出用其他方式（劳动、服务等）作为代价
+  * 放弃购买或选择更便宜的选项
+- 金钱不足时的行为应符合角色性格
 
 【叙事风格】
 - 使用第三人称上帝视角叙事
@@ -605,7 +648,45 @@ ${this.playerName}是这里的老板。今天是新的一天，阳光透过大�
 2. ${this.playerName}的任何行为、对话都必须由玩家输入决定
 3. 你只能描写${this.playerName}以外的所有角色和环境
 4. 每次回复控制在${this.replyLength}字左右
-5. 全程使用上帝视角（第三人称全知叙事）`;
+5. 全程使用上帝视角（第三人称全知叙事）
+
+【重要：输出格式】
+你的每次回复必须严格按照以下格式：
+
+###STATE
+{"spending":[{"guest":"房客姓名","room":房间号,"amount":消费金额,"item":"购买物品"}],"time_passed":是否推进时间(true/false)}
+###END
+
+然后是故事内容、角色反应、对话、动作描写等。
+
+STATE说明：
+- spending: 消费记录数组，没有消费时为空数组 []
+- guest: 消费的房客姓名
+- room: 房间号（数字）
+- amount: 消费金额（数字），没有消费则不填此项
+- item: 购买的物品或服务名称
+- time_passed: 本次回复是否推进了时间
+
+示例1（有消费）：
+###STATE
+{"spending":[{"guest":"林小雨","room":101,"amount":50,"item":"精致甜点"}],"time_passed":false}
+###END
+
+林小雨走到柜台前，看着玻璃柜里摆放的精致甜点...
+
+示例2（无消费）：
+###STATE
+{"spending":[],"time_passed":false}
+###END
+
+阳光透过窗户洒落在大堂里...
+
+示例3（金钱不足）：
+###STATE
+{"spending":[],"time_passed":false}
+###END
+
+林小雨翻看着自己的钱包，脸上露出为难的神色。「老板，我现在手头有点紧，能不能让我先欠着，过几天房租到账了再还您？」她用恳求的眼神看向${this.playerName}。`;
         },
 
         buildRulesInsert() {
