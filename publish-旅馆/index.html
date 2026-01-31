@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏨 旅馆规则之书</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="app.js"></script>
+</head>
+
+<body x-data="game()" x-init="init()">
+
+    <!-- ==================== 加载界面 ==================== -->
+    <div class="loading-screen" x-show="screen === 'loading'" x-transition.opacity.duration.500ms>
+        <div class="loading-content">
+            <div class="hotel-animation">
+                <div class="hotel-icon">🏨</div>
+            </div>
+            <h1 class="loading-title">旅馆规则之书</h1>
+            <p class="loading-subtitle">在这里，你就是规则的制定者</p>
+            <div class="loading-bar-container">
+                <div class="loading-bar" :style="`width: ${loadingProgress}%`"></div>
+            </div>
+            <p class="loading-text" x-text="loadingText"></p>
+            <button class="btn-skip" @click="skipLoading()">跳过加载 →</button>
+        </div>
+    </div>
+
+    <!-- ==================== 设置界面 ==================== -->
+    <div class="setup-screen" x-show="screen === 'setup'" x-transition>
+        <div class="setup-card glass-panel">
+            <div class="setup-header">
+                <div class="setup-icon">🏨</div>
+                <h1>开始你的故事</h1>
+                <p>在这家神秘的旅馆，你即将发现改写现实的力量...</p>
+            </div>
+
+            <div class="setup-form">
+                <div class="form-group">
+                    <label>👤 你的名字</label>
+                    <input type="text" x-model="playerName" placeholder="请输入你的名字（旅馆老板）" maxlength="10"
+                        class="input-field">
+                    <span class="hint">将作为旅馆老板的名字</span>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label>📝 每次回复字数</label>
+                    <div class="word-count-selector">
+                        <button class="word-btn" :class="{'active': replyLength === 300}"
+                            @click="replyLength = 300">300字</button>
+                        <button class="word-btn" :class="{'active': replyLength === 500}"
+                            @click="replyLength = 500">500字</button>
+                        <button class="word-btn" :class="{'active': replyLength === 800}"
+                            @click="replyLength = 800">800字</button>
+                        <button class="word-btn" :class="{'active': replyLength === 1000}"
+                            @click="replyLength = 1000">1000字</button>
+                    </div>
+                    <input type="number" x-model.number="replyLength" min="200" max="2000"
+                        class="input-field input-small" placeholder="或自定义">
+                </div>
+
+                <div class="form-group">
+                    <label>🤖 AI模型</label>
+                    <select x-model="selectedModel" class="input-field">
+                        <template x-for="model in models" :key="model">
+                            <option :value="model" x-text="model"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setup-actions">
+                <button class="btn-primary btn-large" @click="startGame()" :disabled="!playerName.trim()">
+                    ✨ 开启规则之书
+                </button>
+                <button class="btn-secondary" @click="loadLatestSave()" x-show="hasSavedGame">
+                    📂 读取存档
+                </button>
+            </div>
+
+            <div class="setup-tips glass-inner">
+                <h3>📜 游戏说明</h3>
+                <ul>
+                    <li>🔮 你可以随时编写新的「旅馆规则」</li>
+                    <li>🌍 这些规则会改变旅馆中的常识、物理法则</li>
+                    <li>👥 房客会根据规则改变行为</li>
+                    <li>🏨 点击空房间安排客人入住</li>
+                    <li>💾 支持存档/读档，随时保存进度</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 主游戏界面 ==================== -->
+    <div class="game-screen" x-show="screen === 'game'" x-transition>
+        <!-- 顶部栏 -->
+        <div class="game-header">
+            <div class="header-left">
+                <button class="btn-icon" @click="showNoticePanel = !showNoticePanel"
+                    :class="{'active': showNoticePanel}">
+                    📋
+                </button>
+                <span class="rules-count" x-show="rules.length > 0" x-text="rules.length"></span>
+            </div>
+            <div class="header-center">
+                <span class="game-title">旅馆规则之书</span>
+                <div class="game-time">
+                    <span class="time-icon">🕐</span>
+                    <span x-text="`第${gameTime.day}天 ${gameTime.periodName}`"></span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-icon" @click="showGuestsPanel = !showGuestsPanel"
+                    :class="{'active': showGuestsPanel}" title="房客列表">
+                    👥
+                </button>
+                <button class="btn-icon" @click="showSavePanel = true" title="存档/读档">💾</button>
+                <button class="btn-icon" @click="showSettingsPanel = true" title="设置">⚙️</button>
+            </div>
+        </div>
+
+        <!-- 可收缩房客面板 -->
+        <div class="guests-panel" :class="{'show': showGuestsPanel}">
+            <div class="guests-panel-header">
+                <h3>👥 房客列表</h3>
+                <button class="btn-close-small" @click="showGuestsPanel = false">▲</button>
+            </div>
+            <div class="guests-grid">
+                <template x-for="guest in guests" :key="guest.id">
+                    <div class="guest-card"
+                        :class="{'empty': !guest.name, 'checked-out': guest.status === 'checked-out'}"
+                        @click="handleGuestCardClick(guest)">
+                        <div class="guest-avatar" x-text="guest.avatar || '🚪'"></div>
+                        <div class="guest-info" x-show="guest.name">
+                            <div class="guest-name" x-text="guest.name"></div>
+                            <div class="guest-days">
+                                <span class="days-icon">📅</span>
+                                <span x-text="`剩${guest.remainingDays}天`"></span>
+                            </div>
+                            <div class="guest-money">
+                                <span class="money-icon">💰</span>
+                                <span x-text="`¥${guest.money || 0}`"></span>
+                            </div>
+                        </div>
+                        <div class="guest-empty-text" x-show="!guest.name">
+                            <span>空房</span>
+                            <span class="room-rent">¥<span x-text="getRoomRent(guest.roomNumber)"></span>/天</span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="game-main">
+            <!-- 告示牌面板（左侧） -->
+            <div class="notice-panel glass-panel" :class="{'show': showNoticePanel}">
+                <div class="panel-header">
+                    <h3>📋 旅馆告示牌</h3>
+                    <button class="btn-close" @click="showNoticePanel = false">×</button>
+                </div>
+
+                <div class="rules-list custom-scroll">
+                    <template x-if="rules.length === 0">
+                        <div class="empty-rules">
+                            <div class="empty-icon">📝</div>
+                            <p>告示牌空空如也</p>
+                            <p class="hint">发布你的第一条旅馆规则</p>
+                        </div>
+                    </template>
+
+                    <template x-for="(rule, index) in rules" :key="index">
+                        <div class="rule-item notice-style" :class="{'disabled': !rule.active}">
+                            <div class="notice-header">
+                                <span class="notice-number" x-text="'公告 #' + (index + 1)"></span>
+                                <span class="notice-badge" x-show="rule.active">生效中</span>
+                            </div>
+                            <div class="rule-text" x-text="rule.text"></div>
+                            <div class="rule-actions">
+                                <button class="btn-mini" @click="toggleRule(index)" :title="rule.active ? '禁用' : '启用'">
+                                    <span x-text="rule.active ? '✅' : '❌'"></span>
+                                </button>
+                                <button class="btn-mini" @click="editRule(index)" title="编辑">✏️</button>
+                                <button class="btn-mini danger" @click="deleteRule(index)" title="删除">🗑️</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="add-rule-section">
+                    <textarea x-model="newRuleText" placeholder="发布新规则...&#10;例如：所有房客必须在晚上10点前回到房间" class="rule-input"
+                        rows="3"></textarea>
+                    <button class="btn-primary btn-full" @click="addRule()" :disabled="!newRuleText.trim()">
+                        📌 发布公告
+                    </button>
+                </div>
+            </div>
+
+            <!-- 聊天区域 -->
+            <div class="chat-area">
+                <div class="chat-messages custom-scroll" id="chatMessages">
+                    <template x-for="(msg, index) in displayMessages" :key="msg.id || index">
+                        <div class="message" :class="msg.role">
+                            <div class="message-avatar">
+                                <span x-text="msg.role === 'user' ? '👤' : '🏨'"></span>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-bubble" x-html="formatMessage(msg.content)"></div>
+                                <div class="message-actions"
+                                    x-show="index === displayMessages.length - 1 && msg.role === 'assistant'">
+                                    <button class="btn-action" @click="regenerateMessage()" :disabled="isGenerating">
+                                        🔄 重新生成
+                                    </button>
+                                    <button class="btn-action" @click="editMessage(index)">
+                                        ✏️ 编辑
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 流式输出中的消息 -->
+                    <div class="message assistant" x-show="isGenerating && streamingContent">
+                        <div class="message-avatar">🏨</div>
+                        <div class="message-content">
+                            <div class="message-bubble" x-html="formatMessage(streamingContent)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 加载指示器 -->
+                    <div class="message assistant" x-show="isGenerating && !streamingContent">
+                        <div class="message-avatar">🏨</div>
+                        <div class="message-content">
+                            <div class="message-bubble typing">
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <textarea x-model="userInput" @keydown.enter.prevent="!$event.shiftKey && sendMessage()"
+                            placeholder="描述你的行动或对话..." :disabled="isGenerating" rows="1" class="chat-input"></textarea>
+                        <button class="btn-send" @click="sendMessage()" :disabled="isGenerating || !userInput.trim()">
+                            发送
+                        </button>
+                    </div>
+                    <div class="input-hints">
+                        <button class="hint-btn" @click="showNoticePanel = true">📋 编辑规则</button>
+                        <button class="hint-btn" @click="advanceTime()" :disabled="isGenerating">⏰ 推进时间</button>
+                        <button class="hint-btn" @click="doSummary()" :disabled="isGenerating || messages.length < 6">📋
+                            生成总结</button>
+                        <button class="hint-btn" @click="showDrawPanel = true" :disabled="isDrawing">🎨 生成图片</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 房客详情弹窗 ==================== -->
+    <div class="modal-overlay" x-show="selectedGuest" x-transition.opacity @click.self="selectedGuest = null">
+        <div class="modal-card glass-panel guest-detail-modal" @click.stop>
+            <div class="modal-header">
+                <h2>🧳 房客信息</h2>
+                <button class="btn-close" @click="selectedGuest = null">×</button>
+            </div>
+
+            <template x-if="selectedGuest">
+                <div class="guest-detail-content">
+                    <div class="guest-detail-avatar" x-text="selectedGuest.avatar"></div>
+                    <div class="guest-detail-name" x-text="selectedGuest.name"></div>
+                    <div class="guest-detail-category" x-text="selectedGuest.category"></div>
+
+                    <div class="guest-detail-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">入住天数</span>
+                            <span class="stat-value" x-text="selectedGuest.stayDuration + '天'"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">剩余天数</span>
+                            <span class="stat-value highlight" x-text="selectedGuest.remainingDays + '天'"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">房间号</span>
+                            <span class="stat-value" x-text="'#' + selectedGuest.roomNumber"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">房间租金</span>
+                            <span class="stat-value" x-text="'¥' + getRoomRent(selectedGuest.roomNumber) + '/天'"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">已付租金</span>
+                            <span class="stat-value" x-text="'¥' + (selectedGuest.paidRent || 0)"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">携带金钱</span>
+                            <span class="stat-value money" x-text="'¥' + (selectedGuest.money || 0)"></span>
+                        </div>
+                    </div>
+
+                    <div class="guest-detail-desc">
+                        <h4>📝 简介</h4>
+                        <p x-text="selectedGuest.description"></p>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ==================== 新建房客弹窗 ==================== -->
+    <div class="modal-overlay" x-show="showGuestCreateModal" x-transition.opacity
+        @click.self="!isCreatingGuest && (showGuestCreateModal = false)">
+        <div class="modal-card glass-panel" @click.stop>
+            <div class="modal-header">
+                <h2>🏨 安排入住</h2>
+                <button class="btn-close" @click="showGuestCreateModal = false" :disabled="isCreatingGuest">×</button>
+            </div>
+
+            <div class="guest-create-content">
+                <p class="create-room-info">房间号：<strong x-text="'#' + (creatingGuestRoom?.roomNumber || '')"></strong>
+                </p>
+
+                <!-- 加载状态 -->
+                <div x-show="isCreatingGuest" class="creating-loading">
+                    <div class="loading-spinner">🔄</div>
+                    <p>AI正在生成房客信息...</p>
+                </div>
+
+                <!-- 选择界面 -->
+                <div x-show="!isCreatingGuest" class="form-group">
+                    <label>🎯 选择客户族群</label>
+                    <div class="category-selector">
+                        <template x-for="cat in guestCategories" :key="cat.value">
+                            <button class="category-btn" :class="{'active': selectedCategory === cat.value}"
+                                @click="selectedCategory = cat.value" x-text="cat.label"></button>
+                        </template>
+                    </div>
+                    <div x-show="selectedCategory === 'custom'" class="custom-category-input">
+                        <input type="text" x-model="customCategory" placeholder="请输入自定义客户族群描述" class="input-field">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="showGuestCreateModal = false"
+                    :disabled="isCreatingGuest">取消</button>
+                <button class="btn-primary" @click="confirmCreateGuest()"
+                    :disabled="isCreatingGuest || !selectedCategory || (selectedCategory === 'custom' && !customCategory.trim())">
+                    <span x-text="isCreatingGuest ? '生成中...' : '✅ 确认入住'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 存档面板 ==================== -->
+    <div class="modal-overlay" x-show="showSavePanel" x-transition.opacity @click.self="showSavePanel = false">
+        <div class="modal-card glass-panel" @click.stop>
+            <div class="modal-header">
+                <h2>💾 存档管理</h2>
+                <button class="btn-close" @click="showSavePanel = false">×</button>
+            </div>
+
+            <div class="save-slots custom-scroll">
+                <template x-for="slot in 5" :key="slot">
+                    <div class="save-slot" :class="{'has-data': saves[slot]}">
+                        <div class="slot-info">
+                            <div class="slot-number">存档 <span x-text="slot"></span></div>
+                            <template x-if="saves[slot]">
+                                <div class="slot-details">
+                                    <span class="slot-name" x-text="saves[slot].playerName"></span>
+                                    <span class="slot-date" x-text="saves[slot].date"></span>
+                                    <span class="slot-rules" x-text="saves[slot].rulesCount + '条规则'"></span>
+                                </div>
+                            </template>
+                            <template x-if="!saves[slot]">
+                                <div class="slot-empty">空</div>
+                            </template>
+                        </div>
+                        <div class="slot-actions">
+                            <button class="btn-small primary" @click="saveGame(slot)" :disabled="isSaving">
+                                <span x-text="isSaving ? '保存中...' : '保存'"></span>
+                            </button>
+                            <button class="btn-small" @click="loadGame(slot)"
+                                :disabled="!saves[slot] || isLoading">读取</button>
+                            <button class="btn-small danger" @click="deleteSave(slot)"
+                                :disabled="!saves[slot]">删除</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="exportSave()">📤 导出存档</button>
+                <button class="btn-secondary" @click="$refs.importInput.click()">📥 导入存档</button>
+                <input type="file" x-ref="importInput" @change="importSave($event)" accept=".json" style="display:none">
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 设置面板 ==================== -->
+    <div class="modal-overlay" x-show="showSettingsPanel" x-transition.opacity @click.self="showSettingsPanel = false">
+        <div class="modal-card glass-panel" @click.stop>
+            <div class="modal-header">
+                <h2>⚙️ 设置</h2>
+                <button class="btn-close" @click="showSettingsPanel = false">×</button>
+            </div>
+
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>🤖 AI模型</label>
+                    <select x-model="selectedModel" class="input-field">
+                        <template x-for="model in models" :key="model">
+                            <option :value="model" x-text="model"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>📝 回复字数</label>
+                    <input type="number" x-model.number="replyLength" min="200" max="2000" class="input-field">
+                </div>
+
+                <div class="setting-item">
+                    <label>📋 当前总结</label>
+                    <template x-if="summary">
+                        <div class="summary-preview">
+                            <p x-text="summary.substring(0, 200) + '...'"></p>
+                            <button class="btn-small danger" @click="clearSummary()">清除总结</button>
+                        </div>
+                    </template>
+                    <template x-if="!summary">
+                        <p class="hint">暂无总结</p>
+                    </template>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-danger" @click="confirmReset()">🔄 重新开始游戏</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 编辑消息弹窗 ==================== -->
+    <div class="modal-overlay" x-show="editingMessage !== null" x-transition.opacity
+        @click.self="editingMessage = null">
+        <div class="modal-card glass-panel" @click.stop>
+            <div class="modal-header">
+                <h2>✏️ 编辑消息</h2>
+                <button class="btn-close" @click="editingMessage = null">×</button>
+            </div>
+
+            <div class="edit-content">
+                <textarea x-model="editingContent" class="edit-textarea" rows="10"></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="editingMessage = null">取消</button>
+                <button class="btn-primary" @click="saveEditedMessage()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 编辑规则弹窗 ==================== -->
+    <div class="modal-overlay" x-show="editingRuleIndex !== null" x-transition.opacity
+        @click.self="editingRuleIndex = null">
+        <div class="modal-card glass-panel" @click.stop>
+            <div class="modal-header">
+                <h2>✏️ 编辑规则</h2>
+                <button class="btn-close" @click="editingRuleIndex = null">×</button>
+            </div>
+
+            <div class="edit-content">
+                <textarea x-model="editingRuleText" class="edit-textarea" rows="5" placeholder="输入规则内容..."></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="editingRuleIndex = null">取消</button>
+                <button class="btn-primary" @click="saveEditedRule()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 绘图面板弹窗 ==================== -->
+    <div class="modal-overlay" x-show="showDrawPanel" x-transition.opacity @click.self="showDrawPanel = false">
+        <div class="modal-card glass-panel draw-panel" @click.stop>
+            <div class="modal-header">
+                <h2>🎨 AI绘图</h2>
+                <button class="btn-close" @click="showDrawPanel = false">×</button>
+            </div>
+
+            <div class="draw-content">
+                <div class="form-group">
+                    <label>📝 图片描述（英文效果更佳）</label>
+                    <textarea x-model="drawPrompt" class="input-field draw-prompt" rows="3"
+                        placeholder="例如：1girl, long hair, blue eyes, white dress, flower field, sunlight, high quality, detailed"></textarea>
+                </div>
+
+                <div class="draw-tips glass-inner">
+                    <h4>💡 提示词技巧</h4>
+                    <ul>
+                        <li>使用英文逗号分隔描述词</li>
+                        <li>添加质量词如 high quality, detailed</li>
+                        <li>描述人物时包含发型、眼睛颜色、服装等</li>
+                        <li>生成时间约 10-60 秒</li>
+                    </ul>
+                </div>
+
+                <div class="draw-actions">
+                    <button class="btn-primary btn-full" @click="generateImage()"
+                        :disabled="!drawPrompt.trim() || isDrawing">
+                        <span x-text="isDrawing ? '🔄 生成中...' : '✨ 生成图片'"></span>
+                    </button>
+                </div>
+
+                <!-- 生成的图片列表 -->
+                <div class="generated-images" x-show="generatedImages.length > 0">
+                    <h4>📷 已生成的图片</h4>
+                    <div class="images-grid">
+                        <template x-for="(img, index) in generatedImages" :key="index">
+                            <div class="image-item">
+                                <img :src="img.url" :alt="img.prompt" @click="window.open(img.url, '_blank')">
+                                <div class="image-actions">
+                                    <button class="btn-small" @click="insertImageToChat(img.url)"
+                                        title="插入到对话">📝</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" @click="showDrawPanel = false">关闭</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
