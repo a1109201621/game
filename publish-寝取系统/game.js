@@ -491,38 +491,28 @@ const GameState = {
         personalityDesc: {},
         corruptionLevel: 1,
         corruptionExp: 5,
-        infidelityValue: 0,
         virginStatus: '完璧',
         cheatingCount: 0,
-        mood: '平静',
-        clothing: '日常服装',
         sexStats: {
-            oral: 0, handjob: 0, boobjob: 0, footjob: 0,
-            anal: 0, condomSex: 0, creampie: 0, externalCum: 0,
-            threesome: 0, intercrural: 0,
+            oral: 0, handjob: 0, creampie: 0,
             orgasms: 0, cumExtracted: 0
         }
     },
     system: { level: 1, exp: 0, expToNext: 100, coins: 0 },
     shelter: {
-        level: 1,
-        name: '末世之光',
         items: ['压缩饼干x3', '矿泉水x2', '毛毯x1', '应急灯x1']
     },
     gameTime: { year: 2025, month: 12, day: 15, hour: 14, minute: 30, weekday: '星期一' },
-    environment: { outdoorTemp: -35, indoorTemp: 18, weather: '阴冷', location: '避难所' },
+    environment: { weather: '阴冷', location: '避难所' },
     currentTasks: { daily: null, bounty: null },
     completedTasks: [],
-    abilities: [],
     purchaseHistory: [],
     chatHistory: [],
     saves: [null, null, null],
-    // 新增：总结相关状态
     summaryIndex: -1,
     lastUserMessageIndex: -1,
-    // 新增：商店搜索缓存
-    shopCache: {},  // 格式: { "搜索关键词": [商品数组] }
-    shopSearchHistory: []  // 搜索历史记录
+    shopCache: {},
+    shopSearchHistory: []
 };
 
 // ==================== 初始化 ====================
@@ -725,33 +715,19 @@ function loadCheatValues() {
     // 女主角数值
     document.getElementById('cheatCorruptionLevel').value = GameState.heroine.corruptionLevel;
     document.getElementById('cheatCorruptionExp').value = GameState.heroine.corruptionExp;
-    document.getElementById('cheatInfidelity').value = GameState.heroine.infidelityValue;
     document.getElementById('cheatCheatingCount').value = GameState.heroine.cheatingCount;
     document.getElementById('cheatVirginStatus').value = GameState.heroine.virginStatus;
 
-    // 性经验统计
+    // 性经验统计 (只保留5项)
     document.getElementById('cheatOral').value = GameState.heroine.sexStats.oral;
     document.getElementById('cheatHandjob').value = GameState.heroine.sexStats.handjob;
-    document.getElementById('cheatBoobjob').value = GameState.heroine.sexStats.boobjob;
-    document.getElementById('cheatFootjob').value = GameState.heroine.sexStats.footjob;
-    document.getElementById('cheatAnal').value = GameState.heroine.sexStats.anal;
-    document.getElementById('cheatCondomSex').value = GameState.heroine.sexStats.condomSex;
     document.getElementById('cheatCreampie').value = GameState.heroine.sexStats.creampie;
-    document.getElementById('cheatExternalCum').value = GameState.heroine.sexStats.externalCum;
-    document.getElementById('cheatThreesome').value = GameState.heroine.sexStats.threesome;
-    document.getElementById('cheatIntercrural').value = GameState.heroine.sexStats.intercrural;
     document.getElementById('cheatOrgasms').value = GameState.heroine.sexStats.orgasms;
     document.getElementById('cheatCumExtracted').value = GameState.heroine.sexStats.cumExtracted;
 
     // 环境设置
-    document.getElementById('cheatOutdoorTemp').value = GameState.environment.outdoorTemp;
-    document.getElementById('cheatIndoorTemp').value = GameState.environment.indoorTemp;
     document.getElementById('cheatLocation').value = GameState.environment.location;
     document.getElementById('cheatWeather').value = GameState.environment.weather;
-
-    // 避难所设置
-    document.getElementById('cheatShelterLevel').value = GameState.shelter.level;
-    document.getElementById('cheatShelterName').value = GameState.shelter.name;
 
     DebugLog.info('作弊系统', '已加载当前游戏数值');
 }
@@ -766,33 +742,19 @@ function applyCheat() {
     // 女主角数值
     GameState.heroine.corruptionLevel = Math.min(5, Math.max(1, parseInt(document.getElementById('cheatCorruptionLevel').value) || 1));
     GameState.heroine.corruptionExp = Math.min(100, Math.max(0, parseInt(document.getElementById('cheatCorruptionExp').value) || 0));
-    GameState.heroine.infidelityValue = Math.min(100, Math.max(0, parseInt(document.getElementById('cheatInfidelity').value) || 0));
     GameState.heroine.cheatingCount = parseInt(document.getElementById('cheatCheatingCount').value) || 0;
     GameState.heroine.virginStatus = document.getElementById('cheatVirginStatus').value || '完璧';
 
-    // 性经验统计
+    // 性经验统计 (只保留5项)
     GameState.heroine.sexStats.oral = parseInt(document.getElementById('cheatOral').value) || 0;
     GameState.heroine.sexStats.handjob = parseInt(document.getElementById('cheatHandjob').value) || 0;
-    GameState.heroine.sexStats.boobjob = parseInt(document.getElementById('cheatBoobjob').value) || 0;
-    GameState.heroine.sexStats.footjob = parseInt(document.getElementById('cheatFootjob').value) || 0;
-    GameState.heroine.sexStats.anal = parseInt(document.getElementById('cheatAnal').value) || 0;
-    GameState.heroine.sexStats.condomSex = parseInt(document.getElementById('cheatCondomSex').value) || 0;
     GameState.heroine.sexStats.creampie = parseInt(document.getElementById('cheatCreampie').value) || 0;
-    GameState.heroine.sexStats.externalCum = parseInt(document.getElementById('cheatExternalCum').value) || 0;
-    GameState.heroine.sexStats.threesome = parseInt(document.getElementById('cheatThreesome').value) || 0;
-    GameState.heroine.sexStats.intercrural = parseInt(document.getElementById('cheatIntercrural').value) || 0;
     GameState.heroine.sexStats.orgasms = parseInt(document.getElementById('cheatOrgasms').value) || 0;
     GameState.heroine.sexStats.cumExtracted = parseInt(document.getElementById('cheatCumExtracted').value) || 0;
 
     // 环境设置
-    GameState.environment.outdoorTemp = parseInt(document.getElementById('cheatOutdoorTemp').value) || -35;
-    GameState.environment.indoorTemp = parseInt(document.getElementById('cheatIndoorTemp').value) || 18;
     GameState.environment.location = document.getElementById('cheatLocation').value || '避难所';
     GameState.environment.weather = document.getElementById('cheatWeather').value || '阴冷';
-
-    // 避难所设置
-    GameState.shelter.level = parseInt(document.getElementById('cheatShelterLevel').value) || 1;
-    GameState.shelter.name = document.getElementById('cheatShelterName').value || '末世之光';
 
     // 更新UI
     updateAllUI();
@@ -1017,7 +979,6 @@ function completeTask(taskType) {
         DebugLog.success('升级系统', `等级提升到 Lv.${GameState.system.level}`);
     }
 
-    GameState.heroine.infidelityValue = Math.min(100, GameState.heroine.infidelityValue + 5);
     GameState.heroine.corruptionExp += 15;
     if (GameState.heroine.corruptionExp >= 100 && GameState.heroine.corruptionLevel < 5) {
         GameState.heroine.corruptionExp = 0;
@@ -1054,7 +1015,7 @@ async function executeTask(taskType) {
 
 最后必须严格按照以下格式更新状态：
 ###STATE
-{"coins":0,"exp":0,"infidelity":5,"corruption_exp":15,"task_status":"已完成","mood":"满足而疲惫"}
+{"coins":0,"exp":0,"corruption_exp":15,"cheating_count":1,"oral":0,"handjob":0,"creampie":0,"orgasms":0,"cum_extracted":0,"task_status":"已完成"}
 ###END`;
 
     showTypingIndicator();
@@ -1096,9 +1057,9 @@ async function advanceTime(hours) {
 请用600-800字描述，包含适当的色情细节。
 最后必须使用以下格式更新状态：
 ###STATE
-{"coins":0,"exp":0,"infidelity":0,"corruption_exp":0,"location":"位置","weather":"天气","task_status":"进行中","mood":"心情","clothing":"衣着","virgin_status":"处女状态"}
+{"time":"YYYY-MM-DD HH:mm","weekday":"星期X","location":"位置","weather":"天气","coins":0,"exp":0,"corruption_exp":0,"cheating_count":0,"virgin_status":"处女状态","items":"物品变化","oral":0,"handjob":0,"creampie":0,"orgasms":0,"cum_extracted":0,"task_status":"进行中"}
 ###END
-字段说明：coins/exp/infidelity/corruption_exp填写增减数值，无变化填0；其他为字符串描述。`;
+字段说明：数值填增减，无变化填0；字符串可省略。`;
 
         await sendToAI(prompt);
     } else {
@@ -1118,8 +1079,6 @@ function updateAllUI() {
     document.getElementById('gameTime').textContent = formatGameTime();
     document.getElementById('gameWeekday').textContent = GameState.gameTime.weekday;
     document.getElementById('gameLocation').textContent = GameState.environment.location;
-    document.getElementById('outdoorTemp').textContent = `${GameState.environment.outdoorTemp}°C`;
-    document.getElementById('indoorTemp').textContent = `${GameState.environment.indoorTemp}°C`;
     document.getElementById('weather').textContent = GameState.environment.weather;
 
     // 系统
@@ -1127,24 +1086,10 @@ function updateAllUI() {
     document.getElementById('systemExp').textContent = `${GameState.system.exp} / ${GameState.system.expToNext}`;
     document.getElementById('systemCoins').textContent = `${GameState.system.coins} 💰`;
 
-    // 避难所
-    document.getElementById('shelterLevel').textContent = `Lv.${GameState.shelter.level} ${GameState.shelter.name}`;
+    // 避难所物资
     document.getElementById('inventoryList').innerHTML = GameState.shelter.items.map(item =>
         `<span class="inventory-item">${item}</span>`
     ).join('');
-
-    // 能力
-    const abilitiesList = document.getElementById('abilitiesList');
-    if (GameState.abilities.length > 0) {
-        abilitiesList.innerHTML = GameState.abilities.map(a => `
-  <div class="ability-card">
-    <div class="ability-name">${a.name}</div>
-    <div class="ability-desc">${a.desc}</div>
-  </div>
-`).join('');
-    } else {
-        abilitiesList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.75rem;">暂无特殊能力</div>';
-    }
 
     // 女主角
     document.getElementById('heroineDisplayName').textContent = GameState.heroine.name;
@@ -1158,16 +1103,13 @@ function updateAllUI() {
     // 堕落数据
     document.getElementById('corruptionStars').textContent = getCorruptionStars(GameState.heroine.corruptionLevel);
     document.getElementById('corruptionBar').style.width = `${GameState.heroine.corruptionExp}%`;
-    document.getElementById('infidelityValue').textContent = `${GameState.heroine.infidelityValue}%`;
     document.getElementById('virginStatus').textContent = GameState.heroine.virginStatus;
     document.getElementById('cheatingCount').textContent = GameState.heroine.cheatingCount;
 
-    // 性经验
+    // 性经验 (只保留5项)
     const stats = GameState.heroine.sexStats;
     const statsLabels = {
-        oral: '口部侍奉', handjob: '手部侍奉', boobjob: '乳部侍奉', footjob: '足部侍奉',
-        anal: '肛门性交', condomSex: '戴套性交', creampie: '无套内射', externalCum: '体外射精',
-        threesome: '3P/乱交', intercrural: '素股',
+        oral: '口部侍奉', handjob: '手部侍奉', creampie: '无套内射',
         orgasms: '高潮次数', cumExtracted: '榨精(ml)'
     };
     document.getElementById('sexStatsGrid').innerHTML = Object.entries(stats).map(([key, value]) => `
@@ -1510,7 +1452,6 @@ async function regenerateMessage() {
 
 function formatContent(content) {
     return content
-        .replace(/###STATE[\s\S]*?###END/gi, '')
         .replace(/\n/g, '<br>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -1626,19 +1567,20 @@ function buildSystemPrompt() {
         const trait = PersonalityTraits.find(t => t.id === id);
         const desc = h.personalityDesc[id] || trait?.defaultDesc;
         return `${trait?.name}: ${desc}`;
-    }).join('\n');
+    }).join('\\n');
 
     return `你是末世寝取生存游戏的叙事AI。
 
 【世界观】极寒末世，文明崩溃，户外有致命寒流。
 
 【当前状态】时间: ${formatGameTime()} ${GameState.gameTime.weekday}
+位置: ${GameState.environment.location} | 天气: ${GameState.environment.weather}
 
 【主角】${p.name}，${p.age}岁，有淫妻癖倾向
 
 【女主角】${h.name}，${h.age}岁，${h.identity}，主角的${h.relation}
-- 淫乱等级: ${h.corruptionLevel}星
-- 出轨值: ${h.infidelityValue}%
+- 淫乱等级: ${h.corruptionLevel}星 (${h.corruptionExp}/100经验)
+- 出轨次数: ${h.cheatingCount}次
 - 处女状态: ${h.virginStatus}
 - 性格特点:
 ${personalityText || '无特殊设定'}
@@ -1653,12 +1595,17 @@ ${personalityText || '无特殊设定'}
 
 【状态更新格式】每次回复结尾必须使用以下格式更新状态：
 ###STATE
-{"coins":0,"exp":0,"infidelity":0,"corruption_exp":0,"location":"位置","weather":"天气","task_status":"进行中","mood":"心情","clothing":"衣着","virgin_status":"处女状态"}
+{"time":"YYYY-MM-DD HH:mm","weekday":"星期X","location":"位置","weather":"天气","coins":0,"exp":0,"corruption_exp":0,"cheating_count":0,"virgin_status":"处女状态","items":"物品变化描述","oral":0,"handjob":0,"creampie":0,"orgasms":0,"cum_extracted":0,"task_status":"进行中"}
 ###END
 
 字段说明：
-- coins/exp/infidelity/corruption_exp: 填写增减数值（可为负数），无变化填0
-- location/weather/mood/clothing/virgin_status: 字符串描述，无变化可省略
+- time/weekday: 更新后的游戏时间，无变化可省略
+- location/weather: 字符串描述，无变化可省略  
+- coins/exp/corruption_exp: 填写增减数值（可为负数），无变化填0
+- cheating_count: 新增的出轨对象数量，无变化填0
+- virgin_status: 处女状态变化，无变化可省略
+- items: 物资变化描述如"+食物x2"或"-水x1"，无变化可省略
+- oral/handjob/creampie/orgasms/cum_extracted: 性经验增加数值，无变化填0
 - task_status: "进行中"或"已完成"
 - 必须严格按照JSON格式`;
 }
@@ -1696,13 +1643,28 @@ function parseStateChanges(response) {
     if (coinMatch) changes.coins = parseInt(coinMatch[1]);
     const expMatch = response.match(/经验\s*[+＋]\s*(\d+)/);
     if (expMatch) changes.exp = parseInt(expMatch[1]);
-    const infMatch = response.match(/出轨值\s*[+＋]\s*(\d+)/);
-    if (infMatch) changes.infidelity = parseInt(infMatch[1]);
     return Object.keys(changes).length > 0 ? changes : null;
 }
 
 function applyStateChanges(changes) {
     if (!changes) return;
+
+    // 时间更新 - time
+    if (changes.time && changes.time !== 'YYYY-MM-DD HH:mm') {
+        const match = changes.time.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        if (match) {
+            GameState.gameTime.year = parseInt(match[1]);
+            GameState.gameTime.month = parseInt(match[2]);
+            GameState.gameTime.day = parseInt(match[3]);
+            GameState.gameTime.hour = parseInt(match[4]);
+            GameState.gameTime.minute = parseInt(match[5]);
+        }
+    }
+
+    // 星期更新 - weekday
+    if (changes.weekday && changes.weekday !== '星期X') {
+        GameState.gameTime.weekday = changes.weekday;
+    }
 
     // 数值变化 - coins
     if (changes.coins && changes.coins !== 0) {
@@ -1725,22 +1687,20 @@ function applyStateChanges(changes) {
         }
     }
 
-    // 数值变化 - infidelity (出轨值)
-    if (changes.infidelity && changes.infidelity !== 0) {
-        GameState.heroine.infidelityValue = Math.max(0, Math.min(100, GameState.heroine.infidelityValue + changes.infidelity));
-        const sign = changes.infidelity > 0 ? '+' : '';
-        showNotification(`💔 出轨值 ${sign}${changes.infidelity}%`, 'info');
-    }
-
     // 数值变化 - corruption_exp (淫乱经验)
     if (changes.corruption_exp && changes.corruption_exp !== 0) {
         GameState.heroine.corruptionExp = (GameState.heroine.corruptionExp || 0) + changes.corruption_exp;
-        // 淫乱等级升级检查
         while (GameState.heroine.corruptionExp >= 100 && GameState.heroine.corruptionLevel < 5) {
             GameState.heroine.corruptionExp -= 100;
             GameState.heroine.corruptionLevel++;
             showNotification(`⭐ 淫乱等级提升到 ${GameState.heroine.corruptionLevel} 星！`, 'success');
         }
+    }
+
+    // 数值变化 - cheating_count (出轨次数)
+    if (changes.cheating_count && changes.cheating_count !== 0) {
+        GameState.heroine.cheatingCount += changes.cheating_count;
+        showNotification(`💔 出轨次数 +${changes.cheating_count}`, 'info');
     }
 
     // 状态更新 - location
@@ -1761,15 +1721,34 @@ function applyStateChanges(changes) {
         }
     }
 
-    // 状态更新 - mood
-    if (changes.mood && changes.mood !== '心情') {
-        GameState.heroine.mood = changes.mood;
+    // 物资更新 - items
+    if (changes.items && changes.items !== '物品变化描述') {
+        // 解析物品变化，格式如 "+食物x2" 或 "-水x1"
+        const itemChanges = changes.items.split(/[,，]/).map(s => s.trim()).filter(s => s);
+        itemChanges.forEach(change => {
+            if (change.startsWith('+')) {
+                GameState.shelter.items.push(change.substring(1));
+                showNotification(`📦 获得: ${change.substring(1)}`, 'success');
+            } else if (change.startsWith('-')) {
+                const itemName = change.substring(1);
+                const idx = GameState.shelter.items.findIndex(i => i.includes(itemName.split('x')[0]));
+                if (idx >= 0) {
+                    GameState.shelter.items.splice(idx, 1);
+                    showNotification(`📦 消耗: ${itemName}`, 'info');
+                }
+            }
+        });
     }
 
-    // 状态更新 - clothing
-    if (changes.clothing && changes.clothing !== '衣着') {
-        GameState.heroine.clothing = changes.clothing;
-    }
+    // 性经验更新
+    const sexStatFields = { oral: '口部侍奉', handjob: '手部侍奉', creampie: '无套内射', orgasms: '高潮次数', cum_extracted: '榨精' };
+    Object.keys(sexStatFields).forEach(key => {
+        const stateKey = key === 'cum_extracted' ? 'cumExtracted' : key;
+        if (changes[key] && changes[key] !== 0) {
+            GameState.heroine.sexStats[stateKey] += changes[key];
+            showNotification(`💕 ${sexStatFields[key]} +${changes[key]}`, 'info');
+        }
+    });
 
     // 任务状态
     if (changes.task_status === '已完成') {

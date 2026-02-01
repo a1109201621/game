@@ -166,7 +166,6 @@
                     <button class="panel-tab" data-tab="character" onclick="switchTab('character')">💕 角色</button>
                 </div>
 
-                <!-- 状态标签页 -->
                 <div class="tab-content active" id="tab-status">
                     <div class="status-section">
                         <div class="status-section-title">🌍 全局状态</div>
@@ -181,14 +180,6 @@
                         <div class="status-row">
                             <span class="status-label">当前位置</span>
                             <span class="status-value cyan" id="gameLocation">避难所</span>
-                        </div>
-                        <div class="status-row">
-                            <span class="status-label">室外温度</span>
-                            <span class="status-value red" id="outdoorTemp">-35°C</span>
-                        </div>
-                        <div class="status-row">
-                            <span class="status-label">室内温度</span>
-                            <span class="status-value green" id="indoorTemp">18°C</span>
                         </div>
                         <div class="status-row">
                             <span class="status-label">天气状况</span>
@@ -213,21 +204,9 @@
                     </div>
 
                     <div class="status-section">
-                        <div class="status-section-title">🏠 避难所</div>
-                        <div class="status-row">
-                            <span class="status-label">等级</span>
-                            <span class="status-value" id="shelterLevel">Lv.1 末世之光</span>
-                        </div>
+                        <div class="status-section-title">🏠 物资储备</div>
                         <div style="margin-top: 8px;">
-                            <span class="status-label">物资储备</span>
                             <div class="inventory-list" id="inventoryList"></div>
-                        </div>
-                    </div>
-
-                    <div class="status-section">
-                        <div class="status-section-title">⚡ 主角能力</div>
-                        <div id="abilitiesList">
-                            <div style="color: var(--text-muted); font-size: 0.75rem;">暂无特殊能力</div>
                         </div>
                     </div>
                 </div>
@@ -288,16 +267,12 @@
                             <div class="corruption-fill" id="corruptionBar" style="width: 5%;"></div>
                         </div>
                         <div class="status-row">
-                            <span class="status-label">出轨值</span>
-                            <span class="status-value pink" id="infidelityValue">0%</span>
+                            <span class="status-label">出轨次数</span>
+                            <span class="status-value red" id="cheatingCount">0</span>
                         </div>
                         <div class="status-row">
                             <span class="status-label">处女状态</span>
                             <span class="status-value" id="virginStatus">完璧</span>
-                        </div>
-                        <div class="status-row">
-                            <span class="status-label">出轨对象数</span>
-                            <span class="status-value red" id="cheatingCount">0</span>
                         </div>
                     </div>
 
@@ -454,15 +429,9 @@
                 </div>
                 <div class="cheat-row">
                     <div class="cheat-item">
-                        <label class="cheat-label">出轨值 (0-100%)</label>
-                        <input type="number" class="cheat-input" id="cheatInfidelity" min="0" max="100">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">出轨对象数</label>
+                        <label class="cheat-label">出轨次数</label>
                         <input type="number" class="cheat-input" id="cheatCheatingCount" min="0">
                     </div>
-                </div>
-                <div class="cheat-row">
                     <div class="cheat-item">
                         <label class="cheat-label">处女状态</label>
                         <input type="text" class="cheat-input" id="cheatVirginStatus" placeholder="如：完璧、被某人夺走">
@@ -483,43 +452,11 @@
                         <input type="number" class="cheat-input" id="cheatHandjob" min="0">
                     </div>
                     <div class="cheat-item">
-                        <label class="cheat-label">乳部侍奉</label>
-                        <input type="number" class="cheat-input" id="cheatBoobjob" min="0">
-                    </div>
-                </div>
-                <div class="cheat-row three-col">
-                    <div class="cheat-item">
-                        <label class="cheat-label">足部侍奉</label>
-                        <input type="number" class="cheat-input" id="cheatFootjob" min="0">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">肛门性交</label>
-                        <input type="number" class="cheat-input" id="cheatAnal" min="0">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">戴套性交</label>
-                        <input type="number" class="cheat-input" id="cheatCondomSex" min="0">
-                    </div>
-                </div>
-                <div class="cheat-row three-col">
-                    <div class="cheat-item">
                         <label class="cheat-label">无套内射</label>
                         <input type="number" class="cheat-input" id="cheatCreampie" min="0">
                     </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">体外射精</label>
-                        <input type="number" class="cheat-input" id="cheatExternalCum" min="0">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">3P/乱交</label>
-                        <input type="number" class="cheat-input" id="cheatThreesome" min="0">
-                    </div>
                 </div>
                 <div class="cheat-row three-col">
-                    <div class="cheat-item">
-                        <label class="cheat-label">素股</label>
-                        <input type="number" class="cheat-input" id="cheatIntercrural" min="0">
-                    </div>
                     <div class="cheat-item">
                         <label class="cheat-label">高潮次数</label>
                         <input type="number" class="cheat-input" id="cheatOrgasms" min="0">
@@ -536,37 +473,12 @@
                 <div class="cheat-section-title">🌍 环境设置</div>
                 <div class="cheat-row">
                     <div class="cheat-item">
-                        <label class="cheat-label">室外温度 (°C)</label>
-                        <input type="number" class="cheat-input" id="cheatOutdoorTemp">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">室内温度 (°C)</label>
-                        <input type="number" class="cheat-input" id="cheatIndoorTemp">
-                    </div>
-                </div>
-                <div class="cheat-row">
-                    <div class="cheat-item">
                         <label class="cheat-label">当前位置</label>
                         <input type="text" class="cheat-input" id="cheatLocation" placeholder="如：避难所、商业区">
                     </div>
                     <div class="cheat-item">
                         <label class="cheat-label">天气状况</label>
                         <input type="text" class="cheat-input" id="cheatWeather" placeholder="如：阴冷、暴风雪">
-                    </div>
-                </div>
-            </div>
-
-            <!-- 避难所设置 -->
-            <div class="cheat-section">
-                <div class="cheat-section-title">🏠 避难所设置</div>
-                <div class="cheat-row">
-                    <div class="cheat-item">
-                        <label class="cheat-label">避难所等级</label>
-                        <input type="number" class="cheat-input" id="cheatShelterLevel" min="1" max="10">
-                    </div>
-                    <div class="cheat-item">
-                        <label class="cheat-label">避难所名称</label>
-                        <input type="text" class="cheat-input" id="cheatShelterName" placeholder="如：末世之光">
                     </div>
                 </div>
             </div>
@@ -580,10 +492,11 @@
     </div>
 
 
-    <!-- ==================== Debug浮动按钮 ==================== -->
+    <!-- ==================== Debug浮动按钮（已注释，便于后续恢复） ====================
     <button class="debug-float-btn" id="debugBtn" onclick="openDebugModal()">🐛 Debug</button>
+    -->
 
-    <!-- ==================== Debug模态框 ==================== -->
+    <!-- ==================== Debug模态框（已注释，便于后续恢复） ====================
     <div class="modal-overlay" id="debugModal">
         <div class="modal debug-modal">
             <div class="modal-header">
@@ -591,7 +504,6 @@
                 <button class="modal-close" onclick="closeDebugModal()">×</button>
             </div>
 
-            <!-- Debug标签页 -->
             <div class="debug-tabs">
                 <button class="debug-tab active" data-debug-tab="errors" onclick="switchDebugTab('errors')">
                     ❌ 错误 <span class="debug-badge" id="errorCountBadge">0</span>
@@ -607,7 +519,6 @@
                 </button>
             </div>
 
-            <!-- 错误日志 -->
             <div class="debug-content active" id="debug-errors">
                 <div class="debug-toolbar">
                     <button class="debug-action-btn" onclick="DebugLog.exportErrors()">📥 导出</button>
@@ -616,7 +527,6 @@
                 <div class="debug-log-container" id="errorLogContainer"></div>
             </div>
 
-            <!-- AI交互日志 -->
             <div class="debug-content" id="debug-ai">
                 <div class="debug-toolbar">
                     <button class="debug-action-btn" onclick="DebugLog.exportAI()">📥 导出</button>
@@ -625,7 +535,6 @@
                 <div class="debug-log-container" id="aiLogContainer"></div>
             </div>
 
-            <!-- 全部日志 -->
             <div class="debug-content" id="debug-all">
                 <div class="debug-toolbar">
                     <button class="debug-action-btn" onclick="DebugLog.exportAll()">📥 导出</button>
@@ -634,7 +543,6 @@
                 <div class="debug-log-container" id="allLogContainer"></div>
             </div>
 
-            <!-- 游戏状态 -->
             <div class="debug-content" id="debug-state">
                 <div class="debug-toolbar">
                     <button class="debug-action-btn" onclick="DebugLog.refreshState()">🔄 刷新</button>
@@ -645,6 +553,7 @@
             </div>
         </div>
     </div>
+    -->
 
 </body>
 
