@@ -388,14 +388,7 @@ body {
     gap: 15px;
 }
 
-.header-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    background: var(--gradient-pink);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
+
 
 .header-stats {
     display: flex;
@@ -1982,20 +1975,7 @@ body {
     margin: 0;
 }
 
-.cheat-select {
-    padding: 8px 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    cursor: pointer;
-}
 
-.cheat-select:focus {
-    outline: none;
-    border-color: var(--accent-gold);
-}
 
 .cheat-btn-row {
     display: flex;

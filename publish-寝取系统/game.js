@@ -1,4 +1,4 @@
-// ==================== Debug日志系统 ====================
+﻿// ==================== Debug日志系统 ====================
 const DebugLog = {
     errors: [],
     aiLogs: [],
@@ -494,6 +494,8 @@ const GameState = {
         infidelityValue: 0,
         virginStatus: '完璧',
         cheatingCount: 0,
+        mood: '平静',
+        clothing: '日常服装',
         sexStats: {
             oral: 0, handjob: 0, boobjob: 0, footjob: 0,
             anal: 0, condomSex: 0, creampie: 0, externalCum: 0,
@@ -1614,7 +1616,17 @@ ${personalityText || '无特殊设定'}
 2. 对话口语化，性爱场景直白露骨
 3. 女主角高潮时叫声夸张（哦齁齁、咿咿咿等）
 4. 女主角独自执行任务，主角享受隐奸快感
-5. 结尾用【状态变化】标注数值变动`;
+
+【状态更新格式】每次回复结尾必须使用以下格式更新状态：
+###STATE
+{"coins":0,"exp":0,"infidelity":0,"corruption_exp":0,"location":"位置","weather":"天气","task_status":"进行中","mood":"心情","clothing":"衣着","virgin_status":"处女状态"}
+###END
+
+字段说明：
+- coins/exp/infidelity/corruption_exp: 填写增减数值（可为负数），无变化填0
+- location/weather/mood/clothing/virgin_status: 字符串描述，无变化可省略
+- task_status: "进行中"或"已完成"
+- 必须严格按照JSON格式`;
 }
 
 function processAIResponse(response, userMessage) {
@@ -1631,6 +1643,20 @@ function processAIResponse(response, userMessage) {
 }
 
 function parseStateChanges(response) {
+    // 优先解析 ###STATE {...} ###END 格式
+    const stateMatch = response.match(/###STATE\s*([\s\S]*?)\s*###END/i);
+    if (stateMatch) {
+        try {
+            const stateJson = stateMatch[1].trim();
+            const state = JSON.parse(stateJson);
+            DebugLog.success('状态解析', '成功解析###STATE格式', state);
+            return state;
+        } catch (e) {
+            DebugLog.error('状态解析', '###STATE JSON解析失败', { error: e.message, raw: stateMatch[1] });
+        }
+    }
+
+    // 兼容旧格式
     const changes = {};
     const coinMatch = response.match(/寝取币\s*[+＋]\s*(\d+)/);
     if (coinMatch) changes.coins = parseInt(coinMatch[1]);
@@ -1642,22 +1668,78 @@ function parseStateChanges(response) {
 }
 
 function applyStateChanges(changes) {
-    if (changes.coins) {
+    if (!changes) return;
+
+    // 数值变化 - coins
+    if (changes.coins && changes.coins !== 0) {
         GameState.system.coins += changes.coins;
-        showNotification(`💰 +${changes.coins} 寝取币`, 'success');
+        const sign = changes.coins > 0 ? '+' : '';
+        showNotification(`💰 ${sign}${changes.coins} 寝取币`, changes.coins > 0 ? 'success' : 'warning');
     }
-    if (changes.exp) {
+
+    // 数值变化 - exp
+    if (changes.exp && changes.exp !== 0) {
         GameState.system.exp += changes.exp;
+        const sign = changes.exp > 0 ? '+' : '';
+        showNotification(`✨ ${sign}${changes.exp} 经验`, 'info');
         while (GameState.system.exp >= GameState.system.expToNext) {
             GameState.system.exp -= GameState.system.expToNext;
             GameState.system.level++;
             GameState.system.expToNext = Math.floor(GameState.system.expToNext * 1.5);
             showNotification(`🎉 升级到 Lv.${GameState.system.level}！`, 'success');
-            DebugLog.success('升级系统', `从AI响应升级到 Lv.${GameState.system.level}`);
+            DebugLog.success('升级系统', `升级到 Lv.${GameState.system.level}`);
         }
     }
-    if (changes.infidelity) {
-        GameState.heroine.infidelityValue = Math.min(100, GameState.heroine.infidelityValue + changes.infidelity);
+
+    // 数值变化 - infidelity (出轨值)
+    if (changes.infidelity && changes.infidelity !== 0) {
+        GameState.heroine.infidelityValue = Math.max(0, Math.min(100, GameState.heroine.infidelityValue + changes.infidelity));
+        const sign = changes.infidelity > 0 ? '+' : '';
+        showNotification(`💔 出轨值 ${sign}${changes.infidelity}%`, 'info');
+    }
+
+    // 数值变化 - corruption_exp (淫乱经验)
+    if (changes.corruption_exp && changes.corruption_exp !== 0) {
+        GameState.heroine.corruptionExp = (GameState.heroine.corruptionExp || 0) + changes.corruption_exp;
+        // 淫乱等级升级检查
+        while (GameState.heroine.corruptionExp >= 100 && GameState.heroine.corruptionLevel < 5) {
+            GameState.heroine.corruptionExp -= 100;
+            GameState.heroine.corruptionLevel++;
+            showNotification(`⭐ 淫乱等级提升到 ${GameState.heroine.corruptionLevel} 星！`, 'success');
+        }
+    }
+
+    // 状态更新 - location
+    if (changes.location && changes.location !== '位置') {
+        GameState.environment.location = changes.location;
+    }
+
+    // 状态更新 - weather
+    if (changes.weather && changes.weather !== '天气') {
+        GameState.environment.weather = changes.weather;
+    }
+
+    // 状态更新 - virgin_status
+    if (changes.virgin_status && changes.virgin_status !== '处女状态') {
+        if (GameState.heroine.virginStatus !== changes.virgin_status) {
+            GameState.heroine.virginStatus = changes.virgin_status;
+            showNotification(`💋 处女状态变更: ${changes.virgin_status}`, 'warning');
+        }
+    }
+
+    // 状态更新 - mood
+    if (changes.mood && changes.mood !== '心情') {
+        GameState.heroine.mood = changes.mood;
+    }
+
+    // 状态更新 - clothing
+    if (changes.clothing && changes.clothing !== '衣着') {
+        GameState.heroine.clothing = changes.clothing;
+    }
+
+    // 任务状态
+    if (changes.task_status === '已完成' && GameState.currentTasks.daily) {
+        completeTask('daily');
     }
 }
 

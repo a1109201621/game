@@ -124,7 +124,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>末世寝取生存</title>
     <link rel="stylesheet" href="style.css">
-    <script src="game.js"></script>
+    <script src="game.js" defer></script>
 </head>
 
 <body>
@@ -154,12 +154,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">主角名称</label>
-                        <input type="text" class="form-input" id="protagonistName" placeholder="输入主角名字">
+                        <input type="text" class="form-input" id="protagonistName" placeholder="输入主角名字" value="林逸">
                     </div>
                     <div class="form-group">
                         <label class="form-label">主角年龄</label>
                         <input type="number" class="form-input" id="protagonistAge" placeholder="输入年龄" min="18"
-                            onblur="if(this.value < 18) this.value = 18">
+                            value="18" onblur="if(this.value < 18) this.value = 18">
                     </div>
                 </div>
             </div>
@@ -170,22 +170,24 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">女主角名称</label>
-                        <input type="text" class="form-input" id="heroineName" placeholder="输入女主角名字">
+                        <input type="text" class="form-input" id="heroineName" placeholder="输入女主角名字" value="洛宓妍">
                     </div>
                     <div class="form-group">
                         <label class="form-label">女主角年龄</label>
-                        <input type="number" class="form-input" id="heroineAge" placeholder="输入年龄" min="18"
+                        <input type="number" class="form-input" id="heroineAge" placeholder="输入年龄" min="18" value="18"
                             onblur="if(this.value < 18) this.value = 18">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">与主角关系</label>
-                        <input type="text" class="form-input" id="heroineRelation" placeholder="如：女友、青梅竹马、妹妹">
+                        <input type="text" class="form-input" id="heroineRelation" placeholder="如：女友、青梅竹马、妹妹"
+                            value="女友">
                     </div>
                     <div class="form-group">
                         <label class="form-label">女主角身份</label>
-                        <input type="text" class="form-input" id="heroineIdentity" placeholder="如：大学校花、清纯学生">
+                        <input type="text" class="form-input" id="heroineIdentity" placeholder="如：大学校花、清纯学生"
+                            value="大学校花">
                     </div>
                 </div>
 
@@ -695,91 +697,6 @@
         </div>
     </div>
 
-    <!-- ==================== Debug调试模态框 ==================== -->
-    <div class="modal-overlay" id="debugModal">
-        <div class="modal debug-modal">
-            <div class="modal-header">
-                <h3 class="modal-title">🐛 Debug 调试面板</h3>
-                <button class="modal-close" onclick="closeDebugModal()">×</button>
-            </div>
-
-            <!-- Debug标签页切换 -->
-            <div class="debug-tabs">
-                <button class="debug-tab active" data-debug-tab="errors" onclick="switchDebugTab('errors')">
-                    ❌ 错误日志
-                    <span class="badge" id="errorCountBadge">0</span>
-                </button>
-                <button class="debug-tab" data-debug-tab="ai" onclick="switchDebugTab('ai')">
-                    🤖 AI交互
-                    <span class="badge" id="aiCountBadge">0</span>
-                </button>
-                <button class="debug-tab" data-debug-tab="state" onclick="switchDebugTab('state')">
-                    📊 游戏状态
-                </button>
-                <button class="debug-tab" data-debug-tab="all" onclick="switchDebugTab('all')">
-                    📋 全部日志
-                    <span class="badge" id="allCountBadge">3</span>
-                </button>
-            </div>
-
-            <!-- 错误日志标签页 -->
-            <div class="debug-content active" id="debug-errors">
-                <div class="debug-toolbar">
-                    <button class="debug-toolbar-btn" onclick="DebugLog.exportErrors()">📤 导出错误</button>
-                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearErrors()">🗑️ 清空错误</button>
-                </div>
-                <div class="debug-log-container" id="errorLogContainer">
-                    <div class="debug-empty">
-                        <div class="debug-empty-icon">✅</div>
-                        <p>暂无错误记录</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI交互标签页 -->
-            <div class="debug-content" id="debug-ai">
-                <div class="debug-toolbar">
-                    <button class="debug-toolbar-btn" onclick="DebugLog.exportAI()">📤 导出AI日志</button>
-                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearAI()">🗑️ 清空AI日志</button>
-                </div>
-                <div class="debug-log-container" id="aiLogContainer">
-                    <div class="debug-empty">
-                        <div class="debug-empty-icon">🤖</div>
-                        <p>暂无AI交互记录</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 游戏状态标签页 -->
-            <div class="debug-content" id="debug-state">
-                <div class="debug-toolbar">
-                    <button class="debug-toolbar-btn" onclick="DebugLog.refreshState()">🔄 刷新状态</button>
-                    <button class="debug-toolbar-btn" onclick="DebugLog.exportState()">📤 导出状态</button>
-                    <button class="debug-toolbar-btn" onclick="DebugLog.copyState()">📋 复制到剪贴板</button>
-                </div>
-                <div id="stateContainer">
-                    <div class="debug-state-section">
-                        <div class="debug-state-title">🎮 GameState 完整数据</div>
-                        <div class="debug-state-content" id="gameStateDisplay"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 全部日志标签页 -->
-            <div class="debug-content" id="debug-all">
-                <div class="debug-toolbar">
-                    <button class="debug-toolbar-btn" onclick="DebugLog.exportAll()">📤 导出全部</button>
-                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearAll()">🗑️ 清空全部</button>
-                </div>
-                <div class="debug-log-container" id="allLogContainer">
-                    <div class="debug-empty">
-                        <div class="debug-empty-icon">📋</div>
-                        <p>暂无日志记录</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
 </body>
 
