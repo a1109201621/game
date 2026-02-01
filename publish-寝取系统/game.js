@@ -1,43 +1,4 @@
-﻿// ==================== Iframe 通信初始化 ====================
-// 通知父窗口 iframe 已准备好
-if (window.parent !== window) {
-    window.parent.postMessage('iframe:content-ready', '*');
-}
-
-// 检查 DZMM SDK 是否已注入
-function isDzmmInjected() {
-    return !!(window.dzmm && window.dzmm.completions);
-}
-
-// 等待 DZMM API 就绪
-const dzmmReady = new Promise((resolve) => {
-    if (isDzmmInjected()) return resolve('injected');
-
-    const handler = (event) => {
-        if (event.data?.type === 'dzmm:ready') {
-            window.removeEventListener('message', handler);
-            resolve('message');
-        }
-    };
-    window.addEventListener('message', handler);
-
-    const t0 = Date.now();
-    const timer = setInterval(() => {
-        if (isDzmmInjected()) {
-            clearInterval(timer);
-            window.removeEventListener('message', handler);
-            resolve('poll');
-            return;
-        }
-        if (Date.now() - t0 > 5000) {
-            clearInterval(timer);
-            window.removeEventListener('message', handler);
-            resolve('timeout');
-        }
-    }, 100);
-});
-
-// ==================== Debug日志系统 ====================
+﻿// ==================== Debug日志系统 ====================
 const DebugLog = {
     errors: [],
     aiLogs: [],
@@ -1104,7 +1065,11 @@ async function advanceTime(hours) {
 当前任务：${GameState.currentTasks.daily ? GameState.currentTasks.daily.content : '无'}
 
 请用600-800字描述，包含适当的色情细节。
-最后用【状态变化】标注数值变动。`;
+最后必须使用以下格式更新状态：
+###STATE
+{"coins":0,"exp":0,"infidelity":0,"corruption_exp":0,"location":"位置","weather":"天气","task_status":"进行中","mood":"心情","clothing":"衣着","virgin_status":"处女状态"}
+###END
+字段说明：coins/exp/infidelity/corruption_exp填写增减数值，无变化填0；其他为字符串描述。`;
 
         await sendToAI(prompt);
     } else {
@@ -2224,8 +2189,7 @@ async function startGame() {
 描写：
 1. 避难所环境
 2. 两人的亲密互动（体现女主角的性格特点）
-3. 系统首次激活
-4. 提醒用户查看侧边栏的任务
+3. 系统激活,提示主角查看状态栏的任务,而不要主动发布任务
 
 叙事细腻，对话生动。`;
 

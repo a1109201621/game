@@ -580,6 +580,72 @@
     </div>
 
 
+    <!-- ==================== Debug浮动按钮 ==================== -->
+    <button class="debug-float-btn" id="debugBtn" onclick="openDebugModal()">🐛 Debug</button>
+
+    <!-- ==================== Debug模态框 ==================== -->
+    <div class="modal-overlay" id="debugModal">
+        <div class="modal debug-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🐛 Debug 日志</h3>
+                <button class="modal-close" onclick="closeDebugModal()">×</button>
+            </div>
+
+            <!-- Debug标签页 -->
+            <div class="debug-tabs">
+                <button class="debug-tab active" data-debug-tab="errors" onclick="switchDebugTab('errors')">
+                    ❌ 错误 <span class="debug-badge" id="errorCountBadge">0</span>
+                </button>
+                <button class="debug-tab" data-debug-tab="ai" onclick="switchDebugTab('ai')">
+                    🤖 AI交互 <span class="debug-badge" id="aiCountBadge">0</span>
+                </button>
+                <button class="debug-tab" data-debug-tab="all" onclick="switchDebugTab('all')">
+                    📋 全部 <span class="debug-badge" id="allCountBadge">0</span>
+                </button>
+                <button class="debug-tab" data-debug-tab="state" onclick="switchDebugTab('state')">
+                    📊 状态
+                </button>
+            </div>
+
+            <!-- 错误日志 -->
+            <div class="debug-content active" id="debug-errors">
+                <div class="debug-toolbar">
+                    <button class="debug-action-btn" onclick="DebugLog.exportErrors()">📥 导出</button>
+                    <button class="debug-action-btn" onclick="DebugLog.clearErrors()">🗑️ 清空</button>
+                </div>
+                <div class="debug-log-container" id="errorLogContainer"></div>
+            </div>
+
+            <!-- AI交互日志 -->
+            <div class="debug-content" id="debug-ai">
+                <div class="debug-toolbar">
+                    <button class="debug-action-btn" onclick="DebugLog.exportAI()">📥 导出</button>
+                    <button class="debug-action-btn" onclick="DebugLog.clearAI()">🗑️ 清空</button>
+                </div>
+                <div class="debug-log-container" id="aiLogContainer"></div>
+            </div>
+
+            <!-- 全部日志 -->
+            <div class="debug-content" id="debug-all">
+                <div class="debug-toolbar">
+                    <button class="debug-action-btn" onclick="DebugLog.exportAll()">📥 导出</button>
+                    <button class="debug-action-btn" onclick="DebugLog.clearAll()">🗑️ 清空</button>
+                </div>
+                <div class="debug-log-container" id="allLogContainer"></div>
+            </div>
+
+            <!-- 游戏状态 -->
+            <div class="debug-content" id="debug-state">
+                <div class="debug-toolbar">
+                    <button class="debug-action-btn" onclick="DebugLog.refreshState()">🔄 刷新</button>
+                    <button class="debug-action-btn" onclick="DebugLog.exportState()">📥 导出</button>
+                    <button class="debug-action-btn" onclick="DebugLog.copyState()">📋 复制</button>
+                </div>
+                <pre class="debug-state-display" id="gameStateDisplay"></pre>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
