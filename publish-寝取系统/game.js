@@ -1,4 +1,43 @@
-﻿// ==================== Debug日志系统 ====================
+﻿// ==================== Iframe 通信初始化 ====================
+// 通知父窗口 iframe 已准备好
+if (window.parent !== window) {
+    window.parent.postMessage('iframe:content-ready', '*');
+}
+
+// 检查 DZMM SDK 是否已注入
+function isDzmmInjected() {
+    return !!(window.dzmm && window.dzmm.completions);
+}
+
+// 等待 DZMM API 就绪
+const dzmmReady = new Promise((resolve) => {
+    if (isDzmmInjected()) return resolve('injected');
+
+    const handler = (event) => {
+        if (event.data?.type === 'dzmm:ready') {
+            window.removeEventListener('message', handler);
+            resolve('message');
+        }
+    };
+    window.addEventListener('message', handler);
+
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+        if (isDzmmInjected()) {
+            clearInterval(timer);
+            window.removeEventListener('message', handler);
+            resolve('poll');
+            return;
+        }
+        if (Date.now() - t0 > 5000) {
+            clearInterval(timer);
+            window.removeEventListener('message', handler);
+            resolve('timeout');
+        }
+    }, 100);
+});
+
+// ==================== Debug日志系统 ====================
 const DebugLog = {
     errors: [],
     aiLogs: [],
