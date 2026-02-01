@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <base href="https://www.dzmm.ai/api/gamefy/static/b2e4eb8e-68f9-43e7-b46c-f1728fab057b/">
+    <script>(function () {
+            'use strict';
+            function l(r) {
+                if (r == null || typeof r != 'object') return r;
+                try {
+                    return JSON.parse(JSON.stringify(r));
+                } catch {
+                    return r;
+                }
+            }
+            var o = class {
+                constructor(e, s = window) {
+                    this.targetWindow = e;
+                    this.sourceWindow = s;
+                    this.listeners = new Map();
+                    this.streamListeners = new Map();
+                    this.messageHandler = null;
+                }
+                start(e) {
+                    this.messageHandler ||
+                        ((this.messageHandler = async (s) => {
+                            if (s.source !== this.targetWindow) return;
+                            let t = s.data;
+                            if (t.type === 'dzmm:response') {
+                                let n = this.listeners.get(t.id);
+                                n &&
+                                    (this.listeners.delete(t.id),
+                                        t.error ? n(Promise.reject(new Error(t.error))) : n(t.result));
+                            } else if (t.type === 'dzmm:stream') {
+                                let n = this.streamListeners.get(t.id);
+                                n && (n(t.content, t.done), t.done && this.streamListeners.delete(t.id));
+                            } else t.type === 'dzmm:request' && e && (await e(t));
+                        }),
+                            this.sourceWindow.addEventListener('message', this.messageHandler));
+                }
+                stop() {
+                    this.messageHandler &&
+                        (this.sourceWindow.removeEventListener('message', this.messageHandler),
+                            (this.messageHandler = null)),
+                        this.listeners.clear(),
+                        this.streamListeners.clear();
+                }
+                send(e) {
+                    this.targetWindow.postMessage(e, '*');
+                }
+                request(e, s = {}) {
+                    let t = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    return new Promise((n, i) => {
+                        this.listeners.set(t, (a) => {
+                            a instanceof Promise ? a.catch(i) : n(a);
+                        }),
+                            this.send({ type: 'dzmm:request', id: t, method: e, params: l(s) });
+                    });
+                }
+                requestWithStream(e, s, t) {
+                    let n = `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                        i = `${n}-stream`;
+                    return (
+                        this.streamListeners.set(i, t),
+                        new Promise((a, c) => {
+                            this.listeners.set(n, (m) => {
+                                m instanceof Promise ? m.catch(c) : a(m);
+                            }),
+                                this.send({
+                                    type: 'dzmm:request',
+                                    id: n,
+                                    method: e,
+                                    params: l({ ...s, _streamId: i }),
+                                });
+                        })
+                    );
+                }
+                respond(e, s, t) {
+                    this.send({ type: 'dzmm:response', id: e, result: s, error: t });
+                }
+                streamUpdate(e, s, t) {
+                    this.send({ type: 'dzmm:stream', id: e, content: s, done: t });
+                }
+            };
+            var d = class {
+                constructor(e = window.parent) {
+                    this.kv = {
+                        get: (e) => this.channel.request('kv.get', { key: e }),
+                        put: (e, s) => this.channel.request('kv.put', { key: e, value: s }),
+                        delete: (e) => this.channel.request('kv.delete', { key: e }),
+                    };
+                    this.draw = { generate: (e) => this.channel.request('draw.generate', e) };
+                    this.chat = {
+                        list: (e) => this.channel.request('chat.list', { ids: e }),
+                        insert: (e, s) => this.channel.request('chat.insert', { parentId: e, messages: s }),
+                        timeline: (e) => this.channel.request('chat.timeline', { hasId: e }),
+                    };
+                    if (typeof window > 'u') throw new Error('GamefyBrowserSDK requires a browser environment');
+                    (this.channel = new o(e, window)),
+                        this.channel.start(),
+                        e !== window &&
+                        (e.postMessage('iframe:content-ready', '*'),
+                            window.addEventListener('message', (s) => {
+                                s.data?.type === 'dzmm:parent-ready' && e.postMessage('iframe:content-ready', '*');
+                            }));
+                }
+                async completions(e, s) {
+                    let t = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    await this.channel.requestWithStream('completions', { ...e, _streamId: t }, (n, i) =>
+                        s?.(n, i, t),
+                    );
+                }
+            };
+            if (typeof window < 'u')
+                try {
+                    let r = new d();
+                    window.dzmm = r;
+                } catch (r) {
+                    console.error('[Gamefy SDK] Initialization failed:', r);
+                }
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>末世寝取生存</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="game.js"></script>
+</head>
+
+<body>
+
+    <!-- ==================== 启动界面 ==================== -->
+    <div class="start-screen" id="startScreen">
+        <div class="title-container">
+            <h1 class="game-title">末世寝取生存</h1>
+            <p class="game-subtitle">❄️ POST-APOCALYPTIC FROZEN WORLD ❄️</p>
+        </div>
+
+        <div class="start-panel">
+            <!-- AI模型选择 -->
+            <h2 class="panel-title">⚙️ 系统设置</h2>
+            <div class="form-group">
+                <label class="form-label">选择AI模型</label>
+                <select class="form-select" id="modelSelect">
+                    <option value="nalang-xl-0826">Nalang XL (默认)</option>
+                    <option value="nalang-medium-0826">Nalang Medium</option>
+                    <option value="nalang-max-0826">Nalang Max</option>
+                </select>
+            </div>
+
+            <!-- 主角设定 -->
+            <div class="character-setup">
+                <h3 class="character-setup-title">👤 主角设定</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">主角名称</label>
+                        <input type="text" class="form-input" id="protagonistName" placeholder="输入主角名字">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">主角年龄</label>
+                        <input type="number" class="form-input" id="protagonistAge" placeholder="输入年龄" min="18"
+                            onblur="if(this.value < 18) this.value = 18">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 女主角设定 -->
+            <div class="character-setup">
+                <h3 class="character-setup-title">💕 女主角设定</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">女主角名称</label>
+                        <input type="text" class="form-input" id="heroineName" placeholder="输入女主角名字">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">女主角年龄</label>
+                        <input type="number" class="form-input" id="heroineAge" placeholder="输入年龄" min="18"
+                            onblur="if(this.value < 18) this.value = 18">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">与主角关系</label>
+                        <input type="text" class="form-input" id="heroineRelation" placeholder="如：女友、青梅竹马、妹妹">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">女主角身份</label>
+                        <input type="text" class="form-input" id="heroineIdentity" placeholder="如：大学校花、清纯学生">
+                    </div>
+                </div>
+
+                <!-- 处女设定 -->
+                <div class="form-group">
+                    <label class="form-label">处女状态</label>
+                    <select class="form-select" id="virginSelect" onchange="handleVirginChange()">
+                        <option value="yes">是处女（完璧）</option>
+                        <option value="no">非处女</option>
+                    </select>
+                </div>
+
+                <div class="virgin-options" id="virginOptions">
+                    <label class="form-label" style="margin-bottom: 8px;">初夜被谁夺走？</label>
+                    <div class="radio-group" id="virginRadioGroup">
+                        <label class="radio-option" onclick="selectVirginOption(this, 'protagonist')">
+                            <input type="radio" name="virginTaker" value="protagonist">
+                            <span>主角</span>
+                        </label>
+                        <label class="radio-option" onclick="selectVirginOption(this, 'other')">
+                            <input type="radio" name="virginTaker" value="other">
+                            <span>其他人</span>
+                        </label>
+                        <label class="radio-option" onclick="selectVirginOption(this, 'custom')">
+                            <input type="radio" name="virginTaker" value="custom">
+                            <span>自定义</span>
+                        </label>
+                    </div>
+                    <div class="custom-virgin-input" id="customVirginInput">
+                        <input type="text" class="form-input" id="customVirginText" placeholder="输入夺走初夜的对象描述...">
+                    </div>
+                </div>
+
+                <!-- 性格词条 -->
+                <div class="form-group">
+                    <label class="form-label">性格词条（可多选）</label>
+                    <div class="personality-tags" id="personalityTags">
+                        <!-- 动态生成 -->
+                    </div>
+                    <div class="personality-desc-container" id="personalityDescContainer">
+                        <!-- 动态生成选中词条的描述输入框 -->
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="startGameBtn" onclick="startGame()">
+                🎮 开始游戏
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 游戏主界面 ==================== -->
+    <div class="game-screen" id="gameScreen">
+        <!-- 顶部导航 -->
+        <header class="game-header">
+            <div class="header-left">
+                <button class="header-btn toggle-panel-btn" id="togglePanelBtn" onclick="toggleSidePanel()">📊</button>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <span>💰</span>
+                        <span class="stat-value" id="headerCoins">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>📈</span>
+                        <span class="stat-value" id="headerLevel">Lv.1</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>🕐</span>
+                        <span class="stat-value" id="headerTime">14:30</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>⭐</span>
+                        <span class="stat-value" id="headerCorruption">1</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="header-btn" onclick="openShop()">🛒 商店</button>
+                <button class="header-btn" onclick="openSaveModal()">💾 存档</button>
+                <button class="header-btn" onclick="openModelModal()">⚙️ 设置</button>
+            </div>
+        </header>
+
+        <div class="game-main">
+            <!-- 移动端遮罩层 -->
+            <div class="mobile-overlay" id="mobileOverlay" onclick="closeSidePanel()"></div>
+
+            <!-- 左侧状态面板 -->
+            <aside class="side-panel" id="sidePanel">
+                <!-- 面板标签切换 -->
+                <div class="panel-tabs">
+                    <button class="panel-tab active" data-tab="status" onclick="switchTab('status')">📊 状态</button>
+                    <button class="panel-tab" data-tab="tasks" onclick="switchTab('tasks')">📋 任务</button>
+                    <button class="panel-tab" data-tab="character" onclick="switchTab('character')">💕 角色</button>
+                </div>
+
+                <!-- 状态标签页 -->
+                <div class="tab-content active" id="tab-status">
+                    <div class="status-section">
+                        <div class="status-section-title">🌍 全局状态</div>
+                        <div class="status-row">
+                            <span class="status-label">游戏时间</span>
+                            <span class="status-value" id="gameTime">2025-12-15 14:30</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">星期</span>
+                            <span class="status-value" id="gameWeekday">星期一</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">当前位置</span>
+                            <span class="status-value cyan" id="gameLocation">避难所</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">室外温度</span>
+                            <span class="status-value red" id="outdoorTemp">-35°C</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">室内温度</span>
+                            <span class="status-value green" id="indoorTemp">18°C</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">天气状况</span>
+                            <span class="status-value" id="weather">阴冷</span>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">💎 系统核心</div>
+                        <div class="status-row">
+                            <span class="status-label">寝取等级</span>
+                            <span class="status-value purple" id="systemLevel">Lv.1</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">经验值</span>
+                            <span class="status-value cyan" id="systemExp">0 / 100</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">寝取币</span>
+                            <span class="status-value gold" id="systemCoins">0 💰</span>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">🏠 避难所</div>
+                        <div class="status-row">
+                            <span class="status-label">等级</span>
+                            <span class="status-value" id="shelterLevel">Lv.1 末世之光</span>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <span class="status-label">物资储备</span>
+                            <div class="inventory-list" id="inventoryList"></div>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">⚡ 主角能力</div>
+                        <div id="abilitiesList">
+                            <div style="color: var(--text-muted); font-size: 0.75rem;">暂无特殊能力</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务标签页 -->
+                <div class="tab-content" id="tab-tasks">
+                    <div class="status-section">
+                        <div class="status-section-title">📋 每日任务</div>
+                        <div id="dailyTaskContainer"></div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">🎯 悬赏任务</div>
+                        <div id="bountyTaskContainer">
+                            <div style="color: var(--text-muted); font-size: 0.75rem;">悬赏任务仅在周一/周四开放</div>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">✅ 已完成任务</div>
+                        <div id="completedTasksContainer">
+                            <div style="color: var(--text-muted); font-size: 0.75rem;">暂无完成记录</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 角色标签页 -->
+                <div class="tab-content" id="tab-character">
+                    <div class="status-section">
+                        <div class="status-section-title">💕 女主角详情</div>
+                        <div class="character-card">
+                            <div class="character-header">
+                                <span class="character-name" id="heroineDisplayName">林雨晴</span>
+                                <span class="character-relation" id="heroineDisplayRelation">女友</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">年龄</span>
+                                <span class="status-value" id="heroineDisplayAge">21岁</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">身份</span>
+                                <span class="status-value" id="heroineDisplayIdentity">大学校花</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">性格</span>
+                                <span class="status-value cyan" id="heroineDisplayPersonality">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">💔 堕落数据</div>
+                        <div class="status-row">
+                            <span class="status-label">淫乱等级</span>
+                            <span class="star-rating" id="corruptionStars">⭐☆☆☆☆</span>
+                        </div>
+                        <div class="corruption-bar">
+                            <div class="corruption-fill" id="corruptionBar" style="width: 5%;"></div>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">出轨值</span>
+                            <span class="status-value pink" id="infidelityValue">0%</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">处女状态</span>
+                            <span class="status-value" id="virginStatus">完璧</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">出轨对象数</span>
+                            <span class="status-value red" id="cheatingCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="status-section">
+                        <div class="status-section-title">📊 性经验统计</div>
+                        <div class="sex-stats-grid" id="sexStatsGrid"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 对话区域 -->
+            <main class="chat-container" id="chatContainer">
+                <div class="chat-messages" id="chatMessages"></div>
+
+                <div class="chat-input-container">
+                    <div class="quick-actions" id="quickActions">
+                        <button class="quick-btn" onclick="quickAction('让女友去执行当前任务')">🎯 执行任务</button>
+                        <button class="quick-btn" onclick="advanceTime(1)">⏰ 时间+1h</button>
+                        <button class="quick-btn" onclick="advanceTime(24)">📅 时间+1天</button>
+                        <button class="quick-btn" onclick="advanceTime(168)">📆 时间+7天</button>
+                        <button class="quick-btn summary-btn" onclick="prepareSummary()">📝 总结</button>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea class="chat-input" id="userInput" placeholder="输入你的行动或对话..." rows="1"></textarea>
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                            发送 ➤
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ==================== 商店模态框 ==================== -->
+    <div class="modal-overlay" id="shopModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🛒 系统商店</h3>
+                <button class="modal-close" onclick="closeShop()">×</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="color: var(--text-secondary); font-size: 0.9rem;">当前寝取币:</span>
+                <span id="shopCoins" style="color: var(--accent-gold); font-size: 1.1rem; font-weight: 600;">0 💰</span>
+            </div>
+
+            <div class="shop-search-container">
+                <div class="shop-search-wrapper">
+                    <input type="text" class="shop-search-input" id="shopSearchInput" placeholder="输入你想要的物品或能力..."
+                        onkeydown="if(event.key==='Enter')searchShop()">
+                    <button class="shop-search-btn" id="shopSearchBtn" onclick="searchShop()">🔍 搜索</button>
+                </div>
+                <p class="shop-hint">💡 例如："增强性能力"、"让女友更敏感的道具"、"监控录像设备"</p>
+            </div>
+
+            <!-- 搜索历史 -->
+            <div class="shop-history-container" id="shopHistoryContainer" style="display: none;">
+                <div class="shop-history-title">📜 搜索历史（点击快速搜索）</div>
+                <div class="shop-history-tags" id="shopHistoryTags"></div>
+            </div>
+
+            <div class="shop-results" id="shopResults">
+                <div class="shop-empty">
+                    <p>🛍️ 输入关键词搜索商品</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 存档模态框 ==================== -->
+    <div class="modal-overlay" id="saveModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">💾 存档管理</h3>
+                <button class="modal-close" onclick="closeSaveModal()">×</button>
+            </div>
+
+            <div class="save-slots" id="saveSlots">
+                <!-- 动态生成存档槽位 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 模型/设置模态框 ==================== -->
+    <div class="modal-overlay" id="modelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ 游戏设置</h3>
+                <button class="modal-close" onclick="closeModelModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">选择AI模型</label>
+                <select class="form-select" id="inGameModelSelect">
+                    <option value="nalang-xl-0826">Nalang XL (默认)</option>
+                    <option value="nalang-medium-0826">Nalang Medium</option>
+                    <option value="nalang-max-0826">Nalang Max</option>
+                </select>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.82rem; margin: 12px 0;">
+                当前: <span id="currentModelDisplay" style="color: var(--accent-cyan);">nalang-xl-0826</span>
+            </p>
+            <button class="btn btn-primary" onclick="applyModel()">确认切换模型</button>
+
+            <!-- 作弊按钮 -->
+            <button class="settings-cheat-btn" onclick="openCheatModal()">
+                🎮 作弊模式
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 作弊模态框 ==================== -->
+    <div class="modal-overlay" id="cheatModal">
+        <div class="modal cheat-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🎮 作弊模式</h3>
+                <button class="modal-close" onclick="closeCheatModal()">×</button>
+            </div>
+
+            <div class="cheat-warning">
+                ⚠️ 警告：修改数值可能会影响游戏体验，请谨慎使用！
+            </div>
+
+            <!-- 系统数值 -->
+            <div class="cheat-section">
+                <div class="cheat-section-title">💎 系统数值</div>
+                <div class="cheat-row three-col">
+                    <div class="cheat-item">
+                        <label class="cheat-label">寝取币</label>
+                        <input type="number" class="cheat-input" id="cheatCoins" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">经验值</label>
+                        <input type="number" class="cheat-input" id="cheatExp" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">等级</label>
+                        <input type="number" class="cheat-input" id="cheatLevel" min="1" max="99">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 女主角数值 -->
+            <div class="cheat-section">
+                <div class="cheat-section-title">💕 女主角数值</div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">淫乱等级 (1-5星)</label>
+                        <input type="number" class="cheat-input" id="cheatCorruptionLevel" min="1" max="5">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">淫乱经验 (0-100)</label>
+                        <input type="number" class="cheat-input" id="cheatCorruptionExp" min="0" max="100">
+                    </div>
+                </div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">出轨值 (0-100%)</label>
+                        <input type="number" class="cheat-input" id="cheatInfidelity" min="0" max="100">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">出轨对象数</label>
+                        <input type="number" class="cheat-input" id="cheatCheatingCount" min="0">
+                    </div>
+                </div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">处女状态</label>
+                        <input type="text" class="cheat-input" id="cheatVirginStatus" placeholder="如：完璧、被某人夺走">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 性经验统计 -->
+            <div class="cheat-section">
+                <div class="cheat-section-title">📊 性经验统计</div>
+                <div class="cheat-row three-col">
+                    <div class="cheat-item">
+                        <label class="cheat-label">口部侍奉</label>
+                        <input type="number" class="cheat-input" id="cheatOral" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">手部侍奉</label>
+                        <input type="number" class="cheat-input" id="cheatHandjob" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">乳部侍奉</label>
+                        <input type="number" class="cheat-input" id="cheatBoobjob" min="0">
+                    </div>
+                </div>
+                <div class="cheat-row three-col">
+                    <div class="cheat-item">
+                        <label class="cheat-label">足部侍奉</label>
+                        <input type="number" class="cheat-input" id="cheatFootjob" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">肛门性交</label>
+                        <input type="number" class="cheat-input" id="cheatAnal" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">戴套性交</label>
+                        <input type="number" class="cheat-input" id="cheatCondomSex" min="0">
+                    </div>
+                </div>
+                <div class="cheat-row three-col">
+                    <div class="cheat-item">
+                        <label class="cheat-label">无套内射</label>
+                        <input type="number" class="cheat-input" id="cheatCreampie" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">体外射精</label>
+                        <input type="number" class="cheat-input" id="cheatExternalCum" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">3P/乱交</label>
+                        <input type="number" class="cheat-input" id="cheatThreesome" min="0">
+                    </div>
+                </div>
+                <div class="cheat-row three-col">
+                    <div class="cheat-item">
+                        <label class="cheat-label">素股</label>
+                        <input type="number" class="cheat-input" id="cheatIntercrural" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">高潮次数</label>
+                        <input type="number" class="cheat-input" id="cheatOrgasms" min="0">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">榨精(ml)</label>
+                        <input type="number" class="cheat-input" id="cheatCumExtracted" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 环境设置 -->
+            <div class="cheat-section">
+                <div class="cheat-section-title">🌍 环境设置</div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">室外温度 (°C)</label>
+                        <input type="number" class="cheat-input" id="cheatOutdoorTemp">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">室内温度 (°C)</label>
+                        <input type="number" class="cheat-input" id="cheatIndoorTemp">
+                    </div>
+                </div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">当前位置</label>
+                        <input type="text" class="cheat-input" id="cheatLocation" placeholder="如：避难所、商业区">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">天气状况</label>
+                        <input type="text" class="cheat-input" id="cheatWeather" placeholder="如：阴冷、暴风雪">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 避难所设置 -->
+            <div class="cheat-section">
+                <div class="cheat-section-title">🏠 避难所设置</div>
+                <div class="cheat-row">
+                    <div class="cheat-item">
+                        <label class="cheat-label">避难所等级</label>
+                        <input type="number" class="cheat-input" id="cheatShelterLevel" min="1" max="10">
+                    </div>
+                    <div class="cheat-item">
+                        <label class="cheat-label">避难所名称</label>
+                        <input type="text" class="cheat-input" id="cheatShelterName" placeholder="如：末世之光">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按钮 -->
+            <div class="cheat-btn-row">
+                <button class="cheat-btn reset" onclick="loadCheatValues()">🔄 重置为当前值</button>
+                <button class="cheat-btn apply" onclick="applyCheat()">✅ 应用修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== Debug调试模态框 ==================== -->
+    <div class="modal-overlay" id="debugModal">
+        <div class="modal debug-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🐛 Debug 调试面板</h3>
+                <button class="modal-close" onclick="closeDebugModal()">×</button>
+            </div>
+
+            <!-- Debug标签页切换 -->
+            <div class="debug-tabs">
+                <button class="debug-tab active" data-debug-tab="errors" onclick="switchDebugTab('errors')">
+                    ❌ 错误日志
+                    <span class="badge" id="errorCountBadge">0</span>
+                </button>
+                <button class="debug-tab" data-debug-tab="ai" onclick="switchDebugTab('ai')">
+                    🤖 AI交互
+                    <span class="badge" id="aiCountBadge">0</span>
+                </button>
+                <button class="debug-tab" data-debug-tab="state" onclick="switchDebugTab('state')">
+                    📊 游戏状态
+                </button>
+                <button class="debug-tab" data-debug-tab="all" onclick="switchDebugTab('all')">
+                    📋 全部日志
+                    <span class="badge" id="allCountBadge">3</span>
+                </button>
+            </div>
+
+            <!-- 错误日志标签页 -->
+            <div class="debug-content active" id="debug-errors">
+                <div class="debug-toolbar">
+                    <button class="debug-toolbar-btn" onclick="DebugLog.exportErrors()">📤 导出错误</button>
+                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearErrors()">🗑️ 清空错误</button>
+                </div>
+                <div class="debug-log-container" id="errorLogContainer">
+                    <div class="debug-empty">
+                        <div class="debug-empty-icon">✅</div>
+                        <p>暂无错误记录</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI交互标签页 -->
+            <div class="debug-content" id="debug-ai">
+                <div class="debug-toolbar">
+                    <button class="debug-toolbar-btn" onclick="DebugLog.exportAI()">📤 导出AI日志</button>
+                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearAI()">🗑️ 清空AI日志</button>
+                </div>
+                <div class="debug-log-container" id="aiLogContainer">
+                    <div class="debug-empty">
+                        <div class="debug-empty-icon">🤖</div>
+                        <p>暂无AI交互记录</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 游戏状态标签页 -->
+            <div class="debug-content" id="debug-state">
+                <div class="debug-toolbar">
+                    <button class="debug-toolbar-btn" onclick="DebugLog.refreshState()">🔄 刷新状态</button>
+                    <button class="debug-toolbar-btn" onclick="DebugLog.exportState()">📤 导出状态</button>
+                    <button class="debug-toolbar-btn" onclick="DebugLog.copyState()">📋 复制到剪贴板</button>
+                </div>
+                <div id="stateContainer">
+                    <div class="debug-state-section">
+                        <div class="debug-state-title">🎮 GameState 完整数据</div>
+                        <div class="debug-state-content" id="gameStateDisplay"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 全部日志标签页 -->
+            <div class="debug-content" id="debug-all">
+                <div class="debug-toolbar">
+                    <button class="debug-toolbar-btn" onclick="DebugLog.exportAll()">📤 导出全部</button>
+                    <button class="debug-toolbar-btn danger" onclick="DebugLog.clearAll()">🗑️ 清空全部</button>
+                </div>
+                <div class="debug-log-container" id="allLogContainer">
+                    <div class="debug-empty">
+                        <div class="debug-empty-icon">📋</div>
+                        <p>暂无日志记录</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
