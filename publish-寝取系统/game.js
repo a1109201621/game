@@ -1032,6 +1032,35 @@ function completeTask(taskType) {
     updateAllUI();
 }
 
+async function executeTask(taskType) {
+    const task = GameState.currentTasks[taskType];
+    if (!task || task.status === 'completed') return;
+
+    const friendlyMessage = `${GameState.heroine.name}出门去做任务`;
+    addMessage('user', friendlyMessage);
+
+    const secretPrompt = `【任务全程指令】
+女主角${GameState.heroine.name}现在出发去执行以下任务：
+任务名称：${task.type}
+任务内容：${task.content}
+
+请生成不少于1500字的任务全程描写，必须包含以下四个阶段：
+1. 女主角独自出门：描写她离家时的心理状态、穿着、对任务的期待或恐惧。
+2. 寻找目标：在末世废土中寻找任务要求的男性对象，描写环境的恶劣与偶遇的过程。
+3. 做任务过程：【重点描写】详细、露骨地叙述任务执行的每一个色情细节，包含感官描写、对话、心理转变和多次高潮描写。
+4. 回来：任务结束后她的狼狈或满足状态，回到避难所时的样子。
+
+【写作风格】生动细腻、直白露骨，强调寝取（NTR）的羞耻感和背德感。
+
+最后必须严格按照以下格式更新状态：
+###STATE
+{"coins":0,"exp":0,"infidelity":5,"corruption_exp":15,"task_status":"已完成","mood":"满足而疲惫"}
+###END`;
+
+    showTypingIndicator();
+    await sendToAI(secretPrompt);
+}
+
 // ==================== 时间系统 ====================
 async function advanceTime(hours) {
     const t = GameState.gameTime;
@@ -1176,7 +1205,7 @@ function updateTaskUI() {
     <span class="task-status ${task.status}">${task.status === 'pending' ? '进行中' : '已完成'}</span>
     <div class="task-actions">
       ${task.status === 'pending' ? `
-        <button class="task-btn complete" onclick="completeTask('daily')">✅ 完成任务</button>
+        <button class="task-btn complete" onclick="executeTask('daily')">✅ 完成任务</button>
       ` : ''}
       <button class="task-btn refresh" onclick="generateDailyTask()" ${!canRefresh ? 'disabled' : ''}>
         🔄 ${canRefresh ? '刷新任务' : '完成后可刷新'}
@@ -1216,7 +1245,7 @@ function updateTaskUI() {
     <span class="task-status ${bounty.status}">${bounty.status === 'pending' ? '进行中' : '已完成'}</span>
     <div class="task-actions">
       ${bounty.status === 'pending' ? `
-        <button class="task-btn complete" onclick="completeTask('bounty')">✅ 完成任务</button>
+        <button class="task-btn complete" onclick="executeTask('bounty')">✅ 完成任务</button>
       ` : ''}
       ${canShowBounty ? `
         <button class="task-btn refresh" onclick="generateBountyTask()" ${!canRefresh ? 'disabled' : ''}>
@@ -1481,6 +1510,7 @@ async function regenerateMessage() {
 
 function formatContent(content) {
     return content
+        .replace(/###STATE[\s\S]*?###END/gi, '')
         .replace(/\n/g, '<br>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -1742,8 +1772,12 @@ function applyStateChanges(changes) {
     }
 
     // 任务状态
-    if (changes.task_status === '已完成' && GameState.currentTasks.daily) {
-        completeTask('daily');
+    if (changes.task_status === '已完成') {
+        if (GameState.currentTasks.daily && GameState.currentTasks.daily.status === 'pending') {
+            completeTask('daily');
+        } else if (GameState.currentTasks.bounty && GameState.currentTasks.bounty.status === 'pending') {
+            completeTask('bounty');
+        }
     }
 }
 
