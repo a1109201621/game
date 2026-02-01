@@ -1617,9 +1617,12 @@ function processAIResponse(response, userMessage) {
         DebugLog.info('状态解析', '从AI响应中解析到状态变化', changes);
     }
 
-    const isSummary = response.includes('【总结完成】') || userMessage.includes('请对之前的剧情进行总结');
+    // 移除 ###STATE...###END 块，不显示给用户
+    const cleanedResponse = response.replace(/###STATE[\s\S]*?###END/gi, '').trim();
 
-    addMessage('assistant', response, isSummary);
+    const isSummary = cleanedResponse.includes('【总结完成】') || userMessage.includes('请对之前的剧情进行总结');
+
+    addMessage('assistant', cleanedResponse, isSummary);
     updateAllUI();
 }
 
