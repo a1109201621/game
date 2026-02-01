@@ -1618,7 +1618,11 @@ function processAIResponse(response, userMessage) {
     }
 
     // 移除 ###STATE...###END 块，不显示给用户
-    const cleanedResponse = response.replace(/###STATE[\s\S]*?###END/gi, '').trim();
+    // 支持多种变体：###STATE、### STATE、**###STATE**等
+    let cleanedResponse = response
+        .replace(/\*{0,2}#{2,3}\s*STATE\s*\*{0,2}[\s\S]*?\*{0,2}#{2,3}\s*END\s*\*{0,2}/gi, '')
+        .replace(/```json\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```/gi, '') // 移除JSON代码块
+        .trim();
 
     const isSummary = cleanedResponse.includes('【总结完成】') || userMessage.includes('请对之前的剧情进行总结');
 
