@@ -147,6 +147,7 @@
                 </div>
             </div>
             <div class="header-right">
+                <button class="header-btn" onclick="openDrawModal()">🎨 绘图</button>
                 <button class="header-btn" onclick="openShop()">🛒 商店</button>
                 <button class="header-btn" onclick="openSaveModal()">💾 存档</button>
                 <button class="header-btn" onclick="openModelModal()">⚙️ 设置</button>
@@ -352,6 +353,38 @@
 
             <div class="save-slots" id="saveSlots">
                 <!-- 动态生成存档槽位 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 绘图模态框 ==================== -->
+    <div class="modal-overlay" id="drawModal">
+        <div class="modal draw-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🎨 AI 绘图</h3>
+                <button class="modal-close" onclick="closeDrawModal()">×</button>
+            </div>
+
+            <div class="draw-prompt-section">
+                <label class="form-label">绘图提示词（英文效果更佳）</label>
+                <textarea class="draw-prompt-input" id="drawPromptInput" 
+                    placeholder="例如: 1girl, long black hair, blue eyes, white dress, sakura background, detailed, high quality"
+                    rows="4"></textarea>
+            </div>
+
+            <div class="draw-actions">
+                <button class="draw-btn ai-gen" id="aiGenPromptBtn" onclick="generateDrawPrompt()">
+                    🤖 AI生成提示词
+                </button>
+                <button class="draw-btn generate" id="generateImageBtn" onclick="generateImage()">
+                    🎨 生成图片
+                </button>
+            </div>
+
+            <div class="draw-result" id="drawResult">
+                <div class="draw-placeholder">
+                    <p>🖼️ 图片将显示在这里</p>
+                </div>
             </div>
         </div>
     </div>

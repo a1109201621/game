@@ -2685,3 +2685,164 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+
+/* ==================== 绘图模态框样式 ==================== */
+.draw-modal {
+    max-width: 650px;
+    max-height: 90vh;
+}
+
+.draw-prompt-section {
+    margin-bottom: 16px;
+}
+
+.draw-prompt-input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.draw-prompt-input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 12px rgba(157, 107, 255, 0.2);
+}
+
+.draw-prompt-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.draw-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.draw-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.draw-btn.ai-gen {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+.draw-btn.ai-gen:hover:not(:disabled) {
+    background: var(--accent-cyan);
+    color: var(--bg-primary);
+}
+
+.draw-btn.generate {
+    background: var(--gradient-purple);
+    color: white;
+    box-shadow: 0 4px 15px rgba(157, 107, 255, 0.3);
+}
+
+.draw-btn.generate:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(157, 107, 255, 0.4);
+}
+
+.draw-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.draw-result {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.draw-placeholder {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px;
+}
+
+.draw-placeholder p {
+    font-size: 0.9rem;
+}
+
+.draw-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.draw-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent-purple);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.draw-loading-text {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.draw-image-container {
+    width: 100%;
+    max-height: 400px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.draw-image {
+    max-width: 100%;
+    max-height: 380px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.draw-error {
+    text-align: center;
+    padding: 30px;
+    color: var(--accent-red);
+}
+
+.draw-error p {
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
