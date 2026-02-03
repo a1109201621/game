@@ -732,3 +732,217 @@ body {
 [x-transition] {
     transition: all 0.3s ease;
 }
+
+/* 存档弹窗样式 */
+.save-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.save-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 30px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.save-modal h2 {
+    font-size: 22px;
+    margin-bottom: 20px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.save-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.save-slot {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+}
+
+.save-slot:hover {
+    border-color: var(--primary);
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.save-slot.is-empty {
+    opacity: 0.7;
+}
+
+.save-slot.is-empty:hover {
+    opacity: 1;
+}
+
+.slot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.slot-number {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.slot-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.slot-content {
+    margin-bottom: 12px;
+}
+
+.slot-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.slot-info .player-name {
+    font-size: 14px;
+    color: var(--accent);
+}
+
+.slot-info .npc-name {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.slot-empty {
+    text-align: center;
+    padding: 10px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.slot-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.slot-load-btn,
+.slot-save-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.slot-load-btn {
+    background: linear-gradient(135deg, var(--accent) 0%, #0891b2 100%);
+    color: white;
+}
+
+.slot-load-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(6, 182, 212, 0.3);
+}
+
+.slot-load-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.slot-save-btn {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+    color: white;
+}
+
+.slot-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+}
+
+.slot-delete-btn {
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.slot-delete-btn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.overwrite-warning {
+    font-size: 11px;
+    color: var(--warning);
+    margin-top: 6px;
+}
+
+.modal-close-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.modal-close-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* 响应式存档弹窗 */
+@media (max-width: 768px) {
+    .save-modal {
+        padding: 20px;
+        margin: 10px;
+    }
+
+    .save-slot {
+        padding: 12px;
+    }
+
+    .slot-actions {
+        flex-direction: column;
+    }
+
+    .slot-delete-btn {
+        width: 100%;
+    }
+}

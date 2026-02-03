@@ -43,6 +43,14 @@ document.addEventListener('alpine:init', () => {
         // 存档状态
         hasSave: false,
         saveToast: false,
+        saveToastMessage: '游戏已保存',
+        showSaveSlots: false,
+        showLoadSlots: false,
+        saveSlots: [
+            { index: 0, isEmpty: true, data: null },
+            { index: 1, isEmpty: true, data: null },
+            { index: 2, isEmpty: true, data: null }
+        ],
 
         // 当前模型
         currentModel: 'nalang-xl-0826',
@@ -201,19 +209,70 @@ ${npcInfo}
          * 检查是否有存档
          */
         async checkSave() {
+            await this.checkAllSaves();
+            // 兼容旧存档：检查是否有旧的单一存档
             try {
-                const saveData = await window.dzmm.kv.get('game_save');
-                this.hasSave = !!(saveData && saveData.value);
+                const oldSave = await window.dzmm.kv.get('game_save');
+                if (oldSave && oldSave.value && this.saveSlots[0].isEmpty) {
+                    // 迁移旧存档到存档位1
+                    await window.dzmm.kv.put('game_save_0', oldSave.value);
+                    await window.dzmm.kv.delete('game_save');
+                    await this.checkAllSaves();
+                }
             } catch (e) {
-                console.warn('检查存档失败:', e);
-                this.hasSave = false;
+                console.warn('检查旧存档失败:', e);
+            }
+            this.hasSave = this.saveSlots.some(slot => !slot.isEmpty);
+        },
+
+        /**
+         * 检查所有存档位
+         */
+        async checkAllSaves() {
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const saveData = await window.dzmm.kv.get(`game_save_${i}`);
+                    if (saveData && saveData.value) {
+                        this.saveSlots[i] = {
+                            index: i,
+                            isEmpty: false,
+                            data: saveData.value
+                        };
+                    } else {
+                        this.saveSlots[i] = { index: i, isEmpty: true, data: null };
+                    }
+                } catch (e) {
+                    console.warn(`检查存档位${i + 1}失败:`, e);
+                    this.saveSlots[i] = { index: i, isEmpty: true, data: null };
+                }
             }
         },
 
         /**
-         * 保存游戏
+         * 格式化存档时间
          */
-        async saveGame() {
+        formatSaveTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${month}/${day} ${hours}:${minutes}`;
+        },
+
+        /**
+         * 保存游戏 - 显示存档位选择
+         */
+        saveGame() {
+            if (this.disabled) return;
+            this.showSaveSlots = true;
+        },
+
+        /**
+         * 保存到指定存档位
+         */
+        async saveToSlot(slotIndex) {
             if (this.disabled) return;
 
             try {
@@ -224,10 +283,19 @@ ${npcInfo}
                     timestamp: Date.now()
                 };
 
-                await window.dzmm.kv.put('game_save', saveData);
+                await window.dzmm.kv.put(`game_save_${slotIndex}`, saveData);
+
+                // 更新存档位状态
+                this.saveSlots[slotIndex] = {
+                    index: slotIndex,
+                    isEmpty: false,
+                    data: saveData
+                };
 
                 // 显示保存成功提示
+                this.saveToastMessage = `已保存到存档位 ${slotIndex + 1}`;
                 this.saveToast = true;
+                this.showSaveSlots = false;
                 setTimeout(() => {
                     this.saveToast = false;
                 }, 2000);
@@ -239,17 +307,44 @@ ${npcInfo}
         },
 
         /**
-         * 读取存档
+         * 删除存档
          */
-        async loadSave() {
+        async deleteSave(slotIndex) {
             try {
-                const result = await window.dzmm.kv.get('game_save');
+                await window.dzmm.kv.delete(`game_save_${slotIndex}`);
+                this.saveSlots[slotIndex] = { index: slotIndex, isEmpty: true, data: null };
+                this.hasSave = this.saveSlots.some(slot => !slot.isEmpty);
+
+                this.saveToastMessage = `存档位 ${slotIndex + 1} 已删除`;
+                this.saveToast = true;
+                setTimeout(() => {
+                    this.saveToast = false;
+                }, 2000);
+            } catch (e) {
+                console.error('删除存档失败:', e);
+            }
+        },
+
+        /**
+         * 读取存档 - 显示存档位选择
+         */
+        loadSave() {
+            this.showLoadSlots = true;
+        },
+
+        /**
+         * 从指定存档位读取
+         */
+        async loadFromSlot(slotIndex) {
+            try {
+                const result = await window.dzmm.kv.get(`game_save_${slotIndex}`);
                 if (result && result.value) {
                     const saveData = result.value;
                     this.player_name = saveData.player_name;
                     this.currentNpc = saveData.currentNpc;
                     this.messages = saveData.messages || [];
                     this.started = true;
+                    this.showLoadSlots = false;
                     this.scrollToBottom();
                 }
             } catch (e) {

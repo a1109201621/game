@@ -46,8 +46,48 @@
             </div>
 
             <button class="load-save-btn" @click="$store.game.loadSave()" x-show="$store.game.hasSave" x-transition>
-                📂 继续上次游戏
+                📂 读取存档
             </button>
+        </div>
+
+        <!-- 读取存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showLoadSlots" x-transition
+            @click.self="$store.game.showLoadSlots = false">
+            <div class="save-modal">
+                <h2>📂 选择存档</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'玩家: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="npc-name" x-show="slot.data?.currentNpc"
+                                        x-text="'NPC: ' + (slot.data?.currentNpc?.name || '')"></span>
+                                </div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-load-btn" @click="$store.game.loadFromSlot(slot.index)"
+                                    :disabled="slot.isEmpty">
+                                    读取
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showLoadSlots = false">关闭</button>
+            </div>
         </div>
     </div>
 
@@ -238,7 +278,47 @@
 
         <!-- 保存提示 -->
         <div class="save-toast" x-show="$store.game.saveToast" x-transition>
-            ✅ 游戏已保存
+            ✅ <span x-text="$store.game.saveToastMessage"></span>
+        </div>
+
+        <!-- 保存存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showSaveSlots" x-transition
+            @click.self="$store.game.showSaveSlots = false">
+            <div class="save-modal">
+                <h2>💾 选择存档位</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty, 'has-data': !slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'玩家: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="npc-name" x-show="slot.data?.currentNpc"
+                                        x-text="'NPC: ' + (slot.data?.currentNpc?.name || '')"></span>
+                                </div>
+                                <div class="overwrite-warning">⚠️ 将覆盖现有存档</div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-save-btn" @click="$store.game.saveToSlot(slot.index)">
+                                    <span x-text="slot.isEmpty ? '保存' : '覆盖保存'"></span>
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showSaveSlots = false">关闭</button>
+            </div>
         </div>
     </div>
 </body>
