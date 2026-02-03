@@ -2551,6 +2551,143 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 handleResize();
 
+// ==================== 绘图系统 ====================
+function openDrawModal() {
+    document.getElementById('drawModal').classList.add('active');
+    document.getElementById('drawPromptInput').value = '';
+    document.getElementById('drawResult').innerHTML = `
+        <div class="draw-placeholder">
+            <p>🖼️ 图片将显示在这里</p>
+        </div>
+    `;
+    DebugLog.info('绘图系统', '打开绘图面板');
+}
+
+function closeDrawModal() {
+    document.getElementById('drawModal').classList.remove('active');
+}
+
+// AI生成提示词
+async function generateDrawPrompt() {
+    const btn = document.getElementById('aiGenPromptBtn');
+    const promptInput = document.getElementById('drawPromptInput');
+    
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 生成中...';
+    
+    // 获取最近的聊天记录
+    const recentHistory = GameState.chatHistory.slice(-5);
+    const historyText = recentHistory.map(msg => {
+        const role = msg.role === 'user' ? GameState.protagonist.name : '系统叙述';
+        return `${role}: ${msg.content.substring(0, 300)}`;
+    }).join('\n');
+    
+    const prompt = `你是一个专业的AI绘图提示词生成器。根据以下游戏对话内容，生成一段适合动漫风格AI绘图的英文提示词。
+
+【游戏背景】
+末世寝取生存游戏，主角${GameState.protagonist.name}和女友${GameState.heroine.name}。
+女主角：${GameState.heroine.name}，${GameState.heroine.age}岁，${GameState.heroine.identity}。
+
+【最近对话】
+${historyText}
+
+【要求】
+1. 生成英文提示词，用逗号分隔
+2. 描述角色外观、表情、动作、场景
+3. 包含质量标签如：masterpiece, best quality, detailed
+4. 如果对话涉及色情内容，可适当描述
+5. 只输出提示词，不要其他解释
+
+【输出格式示例】
+1girl, long black hair, blue eyes, blushing, white dress, indoor, post-apocalyptic shelter, masterpiece, best quality, detailed`;
+
+    const logId = DebugLog.aiRequest('生成绘图提示词', prompt, GameState.model);
+    
+    try {
+        let fullResponse = '';
+        await dzmm.completions({
+            model: GameState.model,
+            messages: [{ role: 'user', content: prompt }],
+            maxTokens: 500
+        }, (content, done) => {
+            fullResponse = content;
+            if (done) {
+                DebugLog.aiResponse(logId, fullResponse, true);
+                promptInput.value = fullResponse.trim();
+                btn.disabled = false;
+                btn.innerHTML = '🤖 AI生成提示词';
+                showNotification('✅ 提示词已生成', 'success');
+                DebugLog.success('绘图系统', '提示词生成成功', { prompt: fullResponse.substring(0, 100) + '...' });
+            }
+        });
+    } catch (error) {
+        DebugLog.aiResponse(logId, null, false, error.message);
+        DebugLog.error('绘图系统', '提示词生成失败', { error: error.message });
+        btn.disabled = false;
+        btn.innerHTML = '🤖 AI生成提示词';
+        showNotification('❌ 提示词生成失败: ' + error.message, 'error');
+    }
+}
+
+// 生成图片
+async function generateImage() {
+    const promptInput = document.getElementById('drawPromptInput');
+    const generateBtn = document.getElementById('generateImageBtn');
+    const resultDiv = document.getElementById('drawResult');
+    
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+        showNotification('请输入绘图提示词', 'error');
+        return;
+    }
+    
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '⏳ 生成中...';
+    
+    resultDiv.innerHTML = `
+        <div class="draw-loading">
+            <div class="draw-loading-spinner"></div>
+            <p class="draw-loading-text">正在生成图片，请稍候...</p>
+        </div>
+    `;
+    
+    DebugLog.info('绘图系统', '开始生成图片', { prompt: prompt.substring(0, 100) + '...' });
+    
+    try {
+        const result = await dzmm.draw.generate({
+            prompt: prompt,
+            dimension: '1:1',
+            model: 'anime',
+            negativePrompt: 'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry'
+        });
+        
+        if (result && result.images && result.images.length > 0) {
+            const imageUrl = result.images[0];
+            resultDiv.innerHTML = `
+                <div class="draw-image-container">
+                    <img src="${imageUrl}" alt="Generated Image" class="draw-image" onclick="window.open('${imageUrl}', '_blank')">
+                </div>
+            `;
+            showNotification('✅ 图片生成成功！', 'success');
+            DebugLog.success('绘图系统', '图片生成成功', { imageUrl: imageUrl });
+        } else {
+            throw new Error('未返回有效图片');
+        }
+    } catch (error) {
+        DebugLog.error('绘图系统', '图片生成失败', { error: error.message });
+        resultDiv.innerHTML = `
+            <div class="draw-error">
+                <p>❌ 生成失败</p>
+                <p>${error.message}</p>
+            </div>
+        `;
+        showNotification('❌ 图片生成失败: ' + error.message, 'error');
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '🎨 生成图片';
+    }
+}
+
 if (typeof dzmm === 'undefined') {
     DebugLog.error('系统初始化', 'dzmm对象未定义，AI功能将无法使用', {
         hint: '请确保在支持dzmm的环境中运行'
