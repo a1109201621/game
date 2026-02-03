@@ -1,4 +1,53 @@
-﻿// ==================== Debug日志系统 ====================
+﻿// ==================== 存储系统兼容层 ====================
+const StorageHelper = {
+    // 内存存储备选方案
+    memoryStorage: {},
+
+    // 检测 localStorage 是否可用
+    isLocalStorageAvailable: (function () {
+        try {
+            const testKey = '__storage_test__';
+            window.localStorage.setItem(testKey, testKey);
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    })(),
+
+    // 安全地获取存储项
+    getItem(key) {
+        if (this.isLocalStorageAvailable) {
+            return localStorage.getItem(key);
+        }
+        return this.memoryStorage[key] || null;
+    },
+
+    // 安全地设置存储项
+    setItem(key, value) {
+        if (this.isLocalStorageAvailable) {
+            localStorage.setItem(key, value);
+        } else {
+            this.memoryStorage[key] = value;
+        }
+    },
+
+    // 安全地移除存储项
+    removeItem(key) {
+        if (this.isLocalStorageAvailable) {
+            localStorage.removeItem(key);
+        } else {
+            delete this.memoryStorage[key];
+        }
+    },
+
+    // 获取存储模式提示
+    getStorageMode() {
+        return this.isLocalStorageAvailable ? '本地存储' : '临时存储（关闭后丢失）';
+    }
+};
+
+// ==================== Debug日志系统 ====================
 const DebugLog = {
     errors: [],
     aiLogs: [],
@@ -512,7 +561,8 @@ const GameState = {
     summaryIndex: -1,
     lastUserMessageIndex: -1,
     shopCache: {},
-    shopSearchHistory: []
+    shopSearchHistory: [],
+    abilities: []
 };
 
 // ==================== 初始化 ====================
@@ -1945,35 +1995,241 @@ function closeShop() {
     document.getElementById('shopModal').classList.remove('active');
 }
 
-// ==================== 存档系统 ====================
-function openSaveModal() {
+// ==================== 存档系统 (使用 dzmm.kv 云存储) ====================
+
+// 检测 dzmm.kv 是否可用
+function isKvAvailable() {
+    return typeof dzmm !== 'undefined' && dzmm.kv && typeof dzmm.kv.get === 'function';
+}
+
+// 获取存储模式提示
+function getStorageMode() {
+    return isKvAvailable() ? '云端存储' : '临时存储（关闭后丢失）';
+}
+
+// 从首页打开读取存档界面
+async function openLoadSaveFromStart() {
     document.getElementById('saveModal').classList.add('active');
-    renderSaveSlots();
-    DebugLog.info('存档系统', '打开存档管理');
+
+    // 显示/隐藏临时存储警告
+    const warningEl = document.getElementById('storageModeWarning');
+    if (warningEl) {
+        warningEl.style.display = isKvAvailable() ? 'none' : 'block';
+    }
+
+    await renderSaveSlotsForStart();
+    DebugLog.info('存档系统', '从首页打开读取存档', { storageMode: getStorageMode() });
+}
+
+// 渲染首页读取存档界面（只显示读取和删除按钮，不显示保存按钮）
+async function renderSaveSlotsForStart() {
+    try {
+        const container = document.getElementById('saveSlots');
+        if (!container) {
+            DebugLog.error('存档系统', 'saveSlots容器不存在');
+            return;
+        }
+
+        // 显示加载中状态
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">⏳ 加载存档中...</div>';
+
+        // 确保 GameState.saves 是数组
+        if (!Array.isArray(GameState.saves)) {
+            DebugLog.error('存档系统', 'GameState.saves 不是数组，正在重置');
+            GameState.saves = [null, null, null];
+        }
+
+        // 从 dzmm.kv 加载存档
+        if (isKvAvailable()) {
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const result = await dzmm.kv.get(`ntrGame_slot_${i}`);
+                    if (result && result.value) {
+                        GameState.saves[i] = typeof result.value === 'string'
+                            ? JSON.parse(result.value)
+                            : result.value;
+                    } else {
+                        GameState.saves[i] = null;
+                    }
+                } catch (e) {
+                    GameState.saves[i] = null;
+                    DebugLog.error('存档系统', `从云端读取存档槽位${i}失败`, { error: e.message });
+                }
+            }
+        } else {
+            DebugLog.warning('存档系统', 'dzmm.kv 不可用，使用临时内存存储');
+        }
+
+        container.innerHTML = GameState.saves.map((save, i) => {
+            if (save) {
+                return `
+    <div class="save-slot">
+      <div class="save-slot-header">
+        <div class="save-slot-name">存档 ${i + 1}</div>
+        <div class="save-slot-time">${save.savedAt || '未知时间'}</div>
+      </div>
+      <div class="save-slot-info">
+        ${save.protagonist?.name || '未知'} & ${save.heroine?.name || '未知'}<br>
+        Lv.${save.system?.level || 1} | 💰${save.system?.coins || 0} | ⭐${save.heroine?.corruptionLevel || 1}
+      </div>
+      <div class="save-slot-actions">
+        <button class="save-slot-btn load" onclick="loadFromSlotAndStart(${i})">读取</button>
+        <button class="save-slot-btn delete" onclick="deleteSlotFromStart(${i})">删除</button>
+      </div>
+    </div>
+  `;
+            } else {
+                return `
+    <div class="save-slot">
+      <div class="save-slot-header">
+        <div class="save-slot-name">存档 ${i + 1}</div>
+      </div>
+      <div class="save-slot-info save-slot-empty">空存档</div>
+      <div class="save-slot-actions">
+        <button class="save-slot-btn load" disabled>读取</button>
+        <button class="save-slot-btn delete" disabled>删除</button>
+      </div>
+    </div>
+  `;
+            }
+        }).join('');
+
+        DebugLog.info('存档系统', `渲染首页存档槽位完成，共${GameState.saves.length}个槽位`);
+    } catch (error) {
+        DebugLog.error('存档系统', '渲染首页存档槽位失败', { error: error.message, stack: error.stack });
+        console.error('renderSaveSlotsForStart error:', error);
+    }
+}
+
+// 从首页读取存档并进入游戏
+async function loadFromSlotAndStart(slot) {
+    try {
+        let saveData = GameState.saves[slot];
+
+        // 如果内存中没有，尝试从云端加载
+        if (!saveData && isKvAvailable()) {
+            const result = await dzmm.kv.get(`ntrGame_slot_${slot}`);
+            if (result && result.value) {
+                saveData = typeof result.value === 'string'
+                    ? JSON.parse(result.value)
+                    : result.value;
+            }
+        }
+
+        if (!saveData) {
+            showNotification('存档不存在', 'error');
+            DebugLog.warning('存档系统', `存档槽位${slot + 1}不存在`);
+            return;
+        }
+
+        const currentSaves = GameState.saves;
+
+        Object.assign(GameState, saveData);
+        GameState.saves = currentSaves;
+
+        // 确保新增的字段有默认值
+        if (!GameState.shopCache) GameState.shopCache = {};
+        if (!GameState.shopSearchHistory) GameState.shopSearchHistory = [];
+
+        // 关闭存档模态框
+        closeSaveModal();
+
+        // 切换到游戏界面
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('gameScreen').style.display = 'block';
+
+        // 渲染聊天历史
+        renderChatHistory();
+
+        // 更新UI
+        updateAllUI();
+
+        showNotification(`✅ 已加载存档 ${slot + 1}，继续游戏`, 'success');
+        DebugLog.success('存档系统', `从首页加载存档槽位 ${slot + 1}`, { savedAt: saveData.savedAt });
+    } catch (e) {
+        DebugLog.error('存档系统', `从首页加载存档槽位${slot + 1}失败`, { error: e.message });
+        showNotification('存档损坏', 'error');
+    }
+}
+
+// 从首页删除存档
+async function deleteSlotFromStart(slot) {
+    if (!confirm(`确定要删除存档 ${slot + 1} 吗？`)) return;
+
+    try {
+        if (isKvAvailable()) {
+            await dzmm.kv.delete(`ntrGame_slot_${slot}`);
+            DebugLog.info('存档系统', `从云端删除存档槽位 ${slot + 1}`);
+        }
+
+        GameState.saves[slot] = null;
+        await renderSaveSlotsForStart();
+        showNotification(`🗑️ 已删除存档 ${slot + 1}`, 'info');
+    } catch (e) {
+        DebugLog.error('存档系统', `删除存档槽位${slot + 1}失败`, { error: e.message });
+        showNotification('❌ 删除失败', 'error');
+    }
+}
+
+async function openSaveModal() {
+    document.getElementById('saveModal').classList.add('active');
+
+    // 显示/隐藏临时存储警告
+    const warningEl = document.getElementById('storageModeWarning');
+    if (warningEl) {
+        warningEl.style.display = isKvAvailable() ? 'none' : 'block';
+    }
+
+    await renderSaveSlots();
+    DebugLog.info('存档系统', '打开存档管理', { storageMode: getStorageMode() });
 }
 
 function closeSaveModal() {
     document.getElementById('saveModal').classList.remove('active');
 }
 
-function renderSaveSlots() {
-    const container = document.getElementById('saveSlots');
-
-    for (let i = 0; i < 3; i++) {
-        const saved = localStorage.getItem(`ntrGame_slot_${i}`);
-        if (saved) {
-            try {
-                GameState.saves[i] = JSON.parse(saved);
-            } catch (e) {
-                GameState.saves[i] = null;
-                DebugLog.error('存档系统', `存档槽位${i}读取失败`, { error: e.message });
-            }
+async function renderSaveSlots() {
+    try {
+        const container = document.getElementById('saveSlots');
+        if (!container) {
+            DebugLog.error('存档系统', 'saveSlots容器不存在');
+            return;
         }
-    }
 
-    container.innerHTML = GameState.saves.map((save, i) => {
-        if (save) {
-            return `
+        // 显示加载中状态
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">⏳ 加载存档中...</div>';
+
+        // 确保 GameState.saves 是数组
+        if (!Array.isArray(GameState.saves)) {
+            DebugLog.error('存档系统', 'GameState.saves 不是数组，正在重置');
+            GameState.saves = [null, null, null];
+        }
+
+        // 从 dzmm.kv 加载存档
+        if (isKvAvailable()) {
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const result = await dzmm.kv.get(`ntrGame_slot_${i}`);
+                    if (result && result.value) {
+                        GameState.saves[i] = typeof result.value === 'string'
+                            ? JSON.parse(result.value)
+                            : result.value;
+                    } else {
+                        GameState.saves[i] = null;
+                    }
+                } catch (e) {
+                    GameState.saves[i] = null;
+                    DebugLog.error('存档系统', `从云端读取存档槽位${i}失败`, { error: e.message });
+                }
+            }
+        } else {
+            // 降级到内存存储（只在当前会话有效）
+            DebugLog.warning('存档系统', 'dzmm.kv 不可用，使用临时内存存储');
+        }
+
+        container.innerHTML = GameState.saves.map((save, i) => {
+            if (save) {
+                return `
     <div class="save-slot">
       <div class="save-slot-header">
         <div class="save-slot-name">存档 ${i + 1}</div>
@@ -1990,8 +2246,8 @@ function renderSaveSlots() {
       </div>
     </div>
   `;
-        } else {
-            return `
+            } else {
+                return `
     <div class="save-slot">
       <div class="save-slot-header">
         <div class="save-slot-name">存档 ${i + 1}</div>
@@ -2004,38 +2260,60 @@ function renderSaveSlots() {
       </div>
     </div>
   `;
-        }
-    }).join('');
+            }
+        }).join('');
+
+        DebugLog.info('存档系统', `渲染存档槽位完成，共${GameState.saves.length}个槽位，存储模式: ${getStorageMode()}`);
+    } catch (error) {
+        DebugLog.error('存档系统', '渲染存档槽位失败', { error: error.message, stack: error.stack });
+        console.error('renderSaveSlots error:', error);
+    }
 }
 
-function saveToSlot(slot) {
+async function saveToSlot(slot) {
     try {
         const saveData = JSON.parse(JSON.stringify(GameState));
         saveData.savedAt = formatGameTime();
         saveData.saves = undefined;
 
-        localStorage.setItem(`ntrGame_slot_${slot}`, JSON.stringify(saveData));
-        GameState.saves[slot] = saveData;
+        if (isKvAvailable()) {
+            // 使用 dzmm.kv 云存储
+            await dzmm.kv.put(`ntrGame_slot_${slot}`, JSON.stringify(saveData));
+            DebugLog.success('存档系统', `保存到云端存档槽位 ${slot + 1}`, { savedAt: saveData.savedAt });
+        } else {
+            // 降级到内存存储
+            DebugLog.warning('存档系统', `dzmm.kv 不可用，存档仅保存到内存`);
+        }
 
-        renderSaveSlots();
+        GameState.saves[slot] = saveData;
+        await renderSaveSlots();
         showNotification(`✅ 已保存到存档 ${slot + 1}`, 'success');
-        DebugLog.success('存档系统', `保存到存档槽位 ${slot + 1}`, { savedAt: saveData.savedAt });
     } catch (e) {
         DebugLog.error('存档系统', `保存到存档槽位${slot + 1}失败`, { error: e.message });
         showNotification('❌ 保存失败', 'error');
     }
 }
 
-function loadFromSlot(slot) {
-    const saved = localStorage.getItem(`ntrGame_slot_${slot}`);
-    if (!saved) {
-        showNotification('存档不存在', 'error');
-        DebugLog.warning('存档系统', `存档槽位${slot + 1}不存在`);
-        return;
-    }
-
+async function loadFromSlot(slot) {
     try {
-        const saveData = JSON.parse(saved);
+        let saveData = GameState.saves[slot];
+
+        // 如果内存中没有，尝试从云端加载
+        if (!saveData && isKvAvailable()) {
+            const result = await dzmm.kv.get(`ntrGame_slot_${slot}`);
+            if (result && result.value) {
+                saveData = typeof result.value === 'string'
+                    ? JSON.parse(result.value)
+                    : result.value;
+            }
+        }
+
+        if (!saveData) {
+            showNotification('存档不存在', 'error');
+            DebugLog.warning('存档系统', `存档槽位${slot + 1}不存在`);
+            return;
+        }
+
         const currentSaves = GameState.saves;
 
         Object.assign(GameState, saveData);
@@ -2081,15 +2359,22 @@ function renderChatHistory() {
     updateLastMessageActions();
 }
 
-function deleteSlot(slot) {
+async function deleteSlot(slot) {
     if (!confirm(`确定要删除存档 ${slot + 1} 吗？`)) return;
 
-    localStorage.removeItem(`ntrGame_slot_${slot}`);
-    GameState.saves[slot] = null;
+    try {
+        if (isKvAvailable()) {
+            await dzmm.kv.delete(`ntrGame_slot_${slot}`);
+            DebugLog.info('存档系统', `从云端删除存档槽位 ${slot + 1}`);
+        }
 
-    renderSaveSlots();
-    showNotification(`🗑️ 已删除存档 ${slot + 1}`, 'info');
-    DebugLog.info('存档系统', `删除存档槽位 ${slot + 1}`);
+        GameState.saves[slot] = null;
+        await renderSaveSlots();
+        showNotification(`🗑️ 已删除存档 ${slot + 1}`, 'info');
+    } catch (e) {
+        DebugLog.error('存档系统', `删除存档槽位${slot + 1}失败`, { error: e.message });
+        showNotification('❌ 删除失败', 'error');
+    }
 }
 
 // ==================== 模型设置 ====================

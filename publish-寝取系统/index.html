@@ -115,9 +115,14 @@
                 </div>
             </div>
 
-            <button class="btn btn-primary" id="startGameBtn" onclick="startGame()">
-                🎮 开始游戏
-            </button>
+            <div class="start-btn-group">
+                <button class="btn btn-primary" id="startGameBtn" onclick="startGame()">
+                    🎮 开始游戏
+                </button>
+                <button class="btn btn-secondary" id="loadSaveBtn" onclick="openLoadSaveFromStart()">
+                    📂 读取存档
+                </button>
+            </div>
         </div>
     </div>
 
@@ -348,6 +353,10 @@
             <div class="modal-header">
                 <h3 class="modal-title">💾 存档管理</h3>
                 <button class="modal-close" onclick="closeSaveModal()">×</button>
+            </div>
+
+            <div class="storage-mode-warning" id="storageModeWarning" style="display: none;">
+                ⚠️ 当前为临时存储模式，关闭页面后存档将丢失
             </div>
 
             <div class="save-slots" id="saveSlots">

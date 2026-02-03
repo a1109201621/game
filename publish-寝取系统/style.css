@@ -361,6 +361,28 @@ body {
     color: white;
 }
 
+/* 首页按钮组 */
+.start-btn-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.start-btn-group .btn {
+    flex: 1;
+}
+
+.start-btn-group .btn-secondary {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+.start-btn-group .btn-secondary:hover {
+    background: var(--accent-purple);
+    color: white;
+}
+
 /* ==================== 游戏主界面 ==================== */
 .game-screen {
     display: none;
@@ -1728,6 +1750,18 @@ body {
 .shop-history-tag:hover {
     border-color: var(--accent-purple);
     color: var(--accent-purple);
+}
+
+/* 存储模式警告 */
+.storage-mode-warning {
+    background: rgba(255, 170, 107, 0.15);
+    border: 1px solid var(--accent-orange);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 15px;
+    color: var(--accent-orange);
+    font-size: 0.85rem;
+    text-align: center;
 }
 
 /* 存档槽位 */

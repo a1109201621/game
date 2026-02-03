@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🏷️ Tag 系统</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="game.js"></script>
+</head>
+
+<body x-data="">
+    <!-- 加载中状态 -->
+    <div x-show="$store.game.loading" class="loading-container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p>正在初始化游戏...</p>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+        <div class="card">
+            <h1>🏷️ Tag 系统</h1>
+            <p class="subtitle">你拥有修改 NPC Tag 的能力，可以改变他们的一切</p>
+
+            <div class="form-group">
+                <label>你的名字：</label>
+                <input x-model="$store.game.player_name" placeholder="请输入你的名字" />
+            </div>
+
+            <button @click="$store.game.start()" :disabled="!$store.game.player_name">
+                🎮 进入世界
+            </button>
+
+            <div class="instructions">
+                <h3>🎯 玩法说明：</h3>
+                <ul>
+                    <li>输入你想去的地方或者想找的人</li>
+                    <li>遇到 NPC 后，点击右上角的 "🏷️ Tag" 按钮</li>
+                    <li>修改 Tag 会立即改变 NPC 的性格和行为</li>
+                    <li>只有你能看到 Tag 系统，NPC 对此一无所知</li>
+                </ul>
+            </div>
+
+            <button class="load-save-btn" @click="$store.game.loadSave()" x-show="$store.game.hasSave" x-transition>
+                📂 继续上次游戏
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="game">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div class="npc-info">
+                <span class="npc-name" x-text="$store.game.currentNpc ? $store.game.currentNpc.name : '探索中...'"></span>
+                <span class="mood-badge" :class="$store.game.currentNpc?.tags?.mood || ''"
+                    x-text="$store.game.currentNpc?.tags?.mood || '普通'" x-show="$store.game.currentNpc"></span>
+            </div>
+            <div class="status-actions">
+                <select class="model-selector" x-model="$store.game.currentModel">
+                    <option value="nalang-turbo-0826">⚡ Turbo</option>
+                    <option value="nalang-medium-0826">⚖️ Medium</option>
+                    <option value="nalang-max-0826">💎 Max</option>
+                    <option value="nalang-xl-0826">🚀 XL</option>
+                </select>
+                <button class="save-btn" @click="$store.game.saveGame()" :disabled="$store.game.disabled">
+                    💾 保存
+                </button>
+                <button class="tag-toggle-btn" @click="$store.game.showTagPanel = !$store.game.showTagPanel"
+                    x-show="$store.game.currentNpc">
+                    <span x-text="$store.game.showTagPanel ? '✕ 关闭' : '🏷️ Tag'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tag 编辑面板 -->
+        <div class="tag-panel" x-show="$store.game.showTagPanel && $store.game.currentNpc" x-transition>
+            <h3>🏷️ NPC Tags</h3>
+            <p class="tag-hint">修改 Tag 会改变角色行为</p>
+
+            <div class="tag-list">
+                <div class="tag-item">
+                    <label>性格</label>
+                    <select x-model="$store.game.currentNpc.tags.personality"
+                        @change="$store.game.onTagSelect('personality', $event)">
+                        <template x-if="$store.game.isCustomValue('personality')">
+                            <option :value="$store.game.currentNpc.tags.personality"
+                                x-text="'✓ ' + $store.game.currentNpc.tags.personality" selected></option>
+                        </template>
+                        <option value="开朗">开朗</option>
+                        <option value="内向">内向</option>
+                        <option value="冷漠">冷漠</option>
+                        <option value="热情">热情</option>
+                        <option value="傲娇">傲娇</option>
+                        <option value="温柔">温柔</option>
+                        <option value="病娇">病娇</option>
+                        <option value="天然呆">天然呆</option>
+                        <option value="__custom__">✏️ 自定义...</option>
+                    </select>
+                    <input x-show="$store.game.customInputs.personality" x-model="$store.game.customValues.personality"
+                        @blur="$store.game.applyCustomTag('personality')"
+                        @keydown.enter="$store.game.applyCustomTag('personality')" placeholder="输入自定义性格"
+                        class="custom-input" />
+                </div>
+
+                <div class="tag-item">
+                    <label>职业</label>
+                    <select x-model="$store.game.currentNpc.tags.profession"
+                        @change="$store.game.onTagSelect('profession', $event)">
+                        <template x-if="$store.game.isCustomValue('profession')">
+                            <option :value="$store.game.currentNpc.tags.profession"
+                                x-text="'✓ ' + $store.game.currentNpc.tags.profession" selected></option>
+                        </template>
+                        <option value="学生">学生</option>
+                        <option value="老师">老师</option>
+                        <option value="OL">OL</option>
+                        <option value="偶像">偶像</option>
+                        <option value="护士">护士</option>
+                        <option value="女仆">女仆</option>
+                        <option value="画家">画家</option>
+                        <option value="作家">作家</option>
+                        <option value="__custom__">✏️ 自定义...</option>
+                    </select>
+                    <input x-show="$store.game.customInputs.profession" x-model="$store.game.customValues.profession"
+                        @blur="$store.game.applyCustomTag('profession')"
+                        @keydown.enter="$store.game.applyCustomTag('profession')" placeholder="输入自定义职业"
+                        class="custom-input" />
+                </div>
+
+                <div class="tag-item">
+                    <label>爱好</label>
+                    <select x-model="$store.game.currentNpc.tags.hobby"
+                        @change="$store.game.onTagSelect('hobby', $event)">
+                        <template x-if="$store.game.isCustomValue('hobby')">
+                            <option :value="$store.game.currentNpc.tags.hobby"
+                                x-text="'✓ ' + $store.game.currentNpc.tags.hobby" selected></option>
+                        </template>
+                        <option value="阅读">阅读</option>
+                        <option value="绘画">绘画</option>
+                        <option value="音乐">音乐</option>
+                        <option value="游戏">游戏</option>
+                        <option value="运动">运动</option>
+                        <option value="烹饪">烹饪</option>
+                        <option value="独处">独处</option>
+                        <option value="社交">社交</option>
+                        <option value="__custom__">✏️ 自定义...</option>
+                    </select>
+                    <input x-show="$store.game.customInputs.hobby" x-model="$store.game.customValues.hobby"
+                        @blur="$store.game.applyCustomTag('hobby')" @keydown.enter="$store.game.applyCustomTag('hobby')"
+                        placeholder="输入自定义爱好" class="custom-input" />
+                </div>
+
+                <div class="tag-item">
+                    <label>对你的态度</label>
+                    <select x-model="$store.game.currentNpc.tags.attitude"
+                        @change="$store.game.onTagSelect('attitude', $event)">
+                        <template x-if="$store.game.isCustomValue('attitude')">
+                            <option :value="$store.game.currentNpc.tags.attitude"
+                                x-text="'✓ ' + $store.game.currentNpc.tags.attitude" selected></option>
+                        </template>
+                        <option value="友好">友好</option>
+                        <option value="冷淡">冷淡</option>
+                        <option value="好奇">好奇</option>
+                        <option value="警惕">警惕</option>
+                        <option value="亲密">亲密</option>
+                        <option value="崇拜">崇拜</option>
+                        <option value="敌意">敌意</option>
+                        <option value="__custom__">✏️ 自定义...</option>
+                    </select>
+                    <input x-show="$store.game.customInputs.attitude" x-model="$store.game.customValues.attitude"
+                        @blur="$store.game.applyCustomTag('attitude')"
+                        @keydown.enter="$store.game.applyCustomTag('attitude')" placeholder="输入自定义态度"
+                        class="custom-input" />
+                </div>
+
+                <div class="tag-item">
+                    <label>心情</label>
+                    <select x-model="$store.game.currentNpc.tags.mood"
+                        @change="$store.game.onTagSelect('mood', $event)">
+                        <template x-if="$store.game.isCustomValue('mood')">
+                            <option :value="$store.game.currentNpc.tags.mood"
+                                x-text="'✓ ' + $store.game.currentNpc.tags.mood" selected></option>
+                        </template>
+                        <option value="普通">普通</option>
+                        <option value="高兴">高兴</option>
+                        <option value="伤心">伤心</option>
+                        <option value="害羞">害羞</option>
+                        <option value="生气">生气</option>
+                        <option value="紧张">紧张</option>
+                        <option value="兴奋">兴奋</option>
+                        <option value="__custom__">✏️ 自定义...</option>
+                    </select>
+                    <input x-show="$store.game.customInputs.mood" x-model="$store.game.customValues.mood"
+                        @blur="$store.game.applyCustomTag('mood')" @keydown.enter="$store.game.applyCustomTag('mood')"
+                        placeholder="输入自定义心情" class="custom-input" />
+                </div>
+            </div>
+
+            <div class="tag-change-notice" x-show="$store.game.tagChanged" x-transition>
+                ✨ Tag 已修改
+            </div>
+
+            <button class="apply-btn" @click="$store.game.applyTagChanges()"
+                :disabled="!$store.game.tagChanged || $store.game.disabled">
+                ✨ 施展能力
+            </button>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="chat-messages" id="chatMessages">
+                <template x-for="(msg, index) in $store.game.messages" :key="index">
+                    <div class="message" :class="msg.role">
+                        <div class="message-speaker"
+                            x-text="msg.role === 'user' ? $store.game.player_name : (msg.speaker || '旁白')"></div>
+                        <div class="message-content" x-html="msg.content"></div>
+                    </div>
+                </template>
+
+                <div class="message assistant" x-show="$store.game.streaming">
+                    <div class="message-speaker" x-text="$store.game.currentNpc?.name || '旁白'"></div>
+                    <div class="message-content"
+                        x-html="$store.game.streamContent || '<span class=\'loading\'>...</span>'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area" :class="{ 'is-loading': $store.game.streaming }">
+            <input x-model="$store.game.input" placeholder="输入你想说的话..." :disabled="$store.game.disabled"
+                @keydown.enter="$store.game.send()" />
+            <button @click="$store.game.send()" :disabled="$store.game.disabled || !$store.game.input">发送</button>
+        </div>
+
+        <!-- 保存提示 -->
+        <div class="save-toast" x-show="$store.game.saveToast" x-transition>
+            ✅ 游戏已保存
+        </div>
+    </div>
+</body>
+
+</html>
