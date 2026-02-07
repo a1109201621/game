@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亮剑之杀敌换装备 - 系统流军事爽文</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body x-data="">
+
+    <!-- Debug按钮 -->
+    <!-- <button class="debug-toggle" @click="$store.game.debugPanel.open = !$store.game.debugPanel.open" title="Debug面板">
+        🔧
+    </button> -->
+
+    <!-- Debug面板 -->
+    <div class="debug-panel" x-show="$store.game.debugPanel.open" x-transition>
+        <div class="debug-header">
+            <span>🔧 Debug 面板</span>
+            <button @click="$store.game.debugPanel.open = false">✕</button>
+        </div>
+        <div class="debug-body">
+            <div class="debug-section">
+                <div class="debug-title">📤 最近发送的请求</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.lastSent || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">📥 原始响应数据</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.rawResponse || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">✅ 解析后的内容</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.parsedContent || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">🔗 响应状态</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.responseStatus || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">❌ 错误日志 (<span x-text="$store.game.debugPanel.errors.length"></span>)</div>
+                <pre class="debug-content error-log" x-text="$store.game.debugPanel.errors.join('\n') || '暂无错误'"></pre>
+            </div>
+            <div class="debug-actions">
+                <button @click="$store.game.clearDebugLogs()">清空日志</button>
+                <button @click="$store.game.exportDebugLogs()">导出日志</button>
+                <button @click="$store.game.testConnection()">测试连接</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载界面 -->
+    <div class="loading-screen" x-show="$store.game.loading" x-transition>
+        <div class="loading-card">
+            <div class="loading-icon">⚔️</div>
+            <div class="loading-title">亮剑之杀敌换装备</div>
+            <div class="loading-sub">系统在手，天下我有！</div>
+            <div class="loading-spinner"></div>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- 主菜单界面 -->
+    <div class="main-menu" x-show="!$store.game.started && !$store.game.loading" x-transition>
+        <div class="menu-card">
+            <div class="menu-header">
+                <h1>⚔️ 亮剑之杀敌换装备</h1>
+                <p class="subtitle">系统流军事爽文互动游戏</p>
+            </div>
+
+            <!-- 游戏玩法说明 -->
+            <div class="gameplay-info">
+                <h3>📜 游戏玩法</h3>
+                <div class="info-content">
+                    <p><strong>🎯 背景设定：</strong>时代背景为1940年代"第二次世界大战"，你作为一个穿越者，获得了"亮剑之杀敌换装备"系统。</p>
+                    <p><strong>💰 核心机制：</strong>通过李云龙指挥的战斗击杀鬼子获得积分，然后使用积分兑换装备给予独立团！</p>
+                    <p><strong>📊 积分规则：</strong>击杀鬼子兵(+1分)、军曹(+5分)、尉官(+20分)、佐官(+100分)、将官(+1000分)。李云龙本人击杀积分翻倍！</p>
+                    <p><strong>🎮 游戏内容：</strong>你将以神秘"商人"的身份为李云龙提供各种武器装备，帮助独立团在抗日战场上取得辉煌战果！</p>
+                </div>
+            </div>
+
+            <!-- API设置 -->
+            <div class="settings-section">
+                <h3>⚙️ API 设置</h3>
+
+                <div class="form-group">
+                    <label>API 接入点</label>
+                    <input type="text" x-model="$store.game.apiEndpoint" placeholder="http://api.example.com">
+                </div>
+
+                <!-- CORS代理设置 -->
+                <div class="form-group">
+                    <label>CORS代理模式 <span class="current-proxy"
+                            x-text="'(当前: ' + $store.game.corsMode + ')'"></span></label>
+                    <select x-model="$store.game.corsMode">
+                        <option value="none">不使用代理（本地/同域）</option>
+                        <option value="corsproxy">corsproxy.io（推荐）</option>
+                        <option value="corsanywhere">cors-anywhere</option>
+                        <option value="allorigins">allorigins.win</option>
+                        <option value="custom">自定义代理</option>
+                    </select>
+                    <div class="form-hint">
+                        <span x-show="$store.game.corsMode === 'none'" style="color: #f59e0b;">⚠️
+                            不使用代理可能导致跨域失败</span>
+                        <span x-show="$store.game.corsMode === 'corsproxy'" style="color: #22c55e;">✓
+                            推荐：支持HTTP目标</span>
+                        <span x-show="$store.game.corsMode === 'corsanywhere'" style="color: #22c55e;">✓ 备选代理</span>
+                        <span x-show="$store.game.corsMode === 'allorigins'" style="color: #22c55e;">✓ 备选代理</span>
+                        <span x-show="$store.game.corsMode === 'custom'" style="color: #3b82f6;">自定义代理地址</span>
+                    </div>
+                </div>
+
+                <div class="form-group" x-show="$store.game.corsMode === 'custom'">
+                    <label>自定义代理地址</label>
+                    <input type="text" x-model="$store.game.customCorsProxy" placeholder="https://your-proxy.com/?url=">
+                    <div class="form-hint">代理格式：代理URL + 目标URL</div>
+                </div>
+
+                <div class="form-group">
+                    <label>认证方式</label>
+                    <select x-model="$store.game.authType">
+                        <option value="bearer">Bearer Token（标准）</option>
+                        <option value="apikey">API-Key Header</option>
+                        <option value="basic">Basic Auth</option>
+                        <option value="none">无认证</option>
+                        <option value="custom">自定义Header</option>
+                    </select>
+                </div>
+
+                <div class="form-group" x-show="$store.game.authType !== 'none'">
+                    <label x-text="$store.game.authType === 'basic' ? '用户名:密码' : 'API 密钥'"></label>
+                    <input type="text" x-model="$store.game.apiKey"
+                        :placeholder="$store.game.authType === 'basic' ? 'username:password' : '输入密钥'">
+                </div>
+
+                <div class="form-group" x-show="$store.game.authType === 'custom'">
+                    <label>自定义Header名称</label>
+                    <input type="text" x-model="$store.game.customHeaderName" placeholder="例如: X-API-Key">
+                </div>
+
+                <div class="form-group">
+                    <label>流式响应</label>
+                    <select x-model="$store.game.useStream">
+                        <option value="true">启用流式</option>
+                        <option value="false">禁用流式（兼容模式）</option>
+                    </select>
+                    <div class="form-hint">如果对话没有显示内容，请尝试禁用流式</div>
+                </div>
+
+                <div class="form-group">
+                    <label>模型选择</label>
+                    <div class="model-select-row">
+                        <select x-model="$store.game.model">
+                            <option value="">请先获取模型列表</option>
+                            <template x-for="m in $store.game.modelList" :key="m">
+                                <option :value="m" x-text="m"></option>
+                            </template>
+                        </select>
+                        <button class="fetch-btn" @click="$store.game.fetchModels()"
+                            :disabled="$store.game.fetchingModels">
+                            <span x-show="!$store.game.fetchingModels">获取模型</span>
+                            <span x-show="$store.game.fetchingModels">获取中...</span>
+                        </button>
+                    </div>
+                    <div class="form-hint" x-show="$store.game.modelList.length > 0">
+                        ✓ 已获取 <span x-text="$store.game.modelList.length"></span> 个模型
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>手动输入模型名称（可选）</label>
+                    <input type="text" x-model="$store.game.manualModel" placeholder="如果获取失败，可以手动输入模型名">
+                </div>
+
+                <!-- 连接测试 -->
+                <div class="connection-test">
+                    <button class="test-btn" @click="$store.game.testConnection()" :disabled="$store.game.testing">
+                        <span x-show="!$store.game.testing">🔌 测试API连接</span>
+                        <span x-show="$store.game.testing">测试中...</span>
+                    </button>
+                    <div class="test-result" x-show="$store.game.testResult"
+                        :class="$store.game.testResult?.success ? 'success' : 'error'">
+                        <span x-text="$store.game.testResult?.message"></span>
+                    </div>
+                </div>
+
+                <!-- 重置设置按钮 -->
+                <div class="reset-section">
+                    <button class="reset-btn" @click="$store.game.resetSettings()">
+                        🔄 重置所有设置（清除旧数据）
+                    </button>
+                </div>
+            </div>
+
+            <!-- 参数滑块 -->
+            <div class="settings-section">
+                <h3>🎛️ 生成参数</h3>
+                <div class="slider-group">
+                    <label>最大上下文 <span class="slider-value"
+                            x-text="$store.game.maxContext.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.maxContext" min="0" max="1000000" step="1000">
+                    <div class="slider-range"><span>0</span><span>100万</span></div>
+                </div>
+                <div class="slider-group">
+                    <label>最大回复 <span class="slider-value"
+                            x-text="$store.game.maxReply.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.maxReply" min="0" max="100000" step="100">
+                    <div class="slider-range"><span>0</span><span>10万</span></div>
+                </div>
+                <div class="slider-group">
+                    <label>思考长度 <span class="slider-value"
+                            x-text="$store.game.thinkingBudget.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.thinkingBudget" min="0" max="24000" step="100">
+                    <div class="slider-range"><span>0</span><span>24000</span></div>
+                </div>
+            </div>
+
+            <!-- 玩家设置 -->
+            <div class="settings-section">
+                <h3>👤 玩家设置</h3>
+                <div class="form-group">
+                    <label>你的名字（宿主）</label>
+                    <input type="text" x-model="$store.game.playerName" placeholder="输入你的名字">
+                </div>
+            </div>
+
+            <!-- 按钮组 -->
+            <div class="menu-buttons">
+                <button class="primary-btn" @click="$store.game.startGame()"
+                    :disabled="!$store.game.getActiveModel() || !$store.game.playerName">
+                    🎮 开始游戏
+                </button>
+                <button class="secondary-btn" @click="$store.game.openSaveManager()">
+                    💾 存档管理
+                </button>
+            </div>
+
+            <div class="start-hint" x-show="!$store.game.getActiveModel() || !$store.game.playerName">
+                <span x-show="!$store.game.getActiveModel()">⚠️ 请选择或输入模型</span>
+                <span x-show="!$store.game.playerName">⚠️ 请输入玩家名字</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div class="game-screen" x-show="$store.game.started && !$store.game.loading" x-transition>
+        <!-- 顶部状态栏 -->
+        <div class="game-topbar">
+            <div class="topbar-left">
+                <span class="game-title">⚔️ 亮剑之杀敌换装备</span>
+                <span class="player-info" x-text="$store.game.playerName + ' · 系统宿主'"></span>
+            </div>
+            <div class="topbar-right">
+                <button class="icon-btn" @click="$store.game.statusBarOpen = !$store.game.statusBarOpen" title="状态栏"
+                    :class="{ active: $store.game.statusBarOpen }">📊</button>
+                <button class="icon-btn" @click="$store.game.openShop()" title="装备商店">🏪</button>
+                <button class="icon-btn" @click="$store.game.openSaveManager()" title="存档管理">💾</button>
+                <button class="icon-btn" @click="$store.game.openSettings()" title="设置">⚙️</button>
+                <button class="icon-btn" @click="$store.game.backToMenu()" title="返回主菜单">🏠</button>
+            </div>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar" x-show="$store.game.statusBarOpen" x-transition>
+            <div class="status-header">
+                <span>📊 战场状态</span>
+                <button @click="$store.game.statusBarOpen = false">✕</button>
+            </div>
+            <div class="status-content">
+                <div class="status-row">
+                    <span class="status-label">宿主：</span>
+                    <span class="status-value" x-text="$store.game.playerName"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">当前位置：</span>
+                    <span class="status-value" x-text="$store.game.gameState.location || '独立团团部'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">部队状态：</span>
+                    <span class="status-value" x-text="$store.game.gameState.armyStatus || '战备就绪'"></span>
+                </div>
+                <div class="status-row highlight">
+                    <span class="status-label">💰 可用积分：</span>
+                    <span class="status-value score" x-text="$store.game.gameState.score + ' 分'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">当前任务：</span>
+                    <span class="status-value" x-text="$store.game.gameState.currentTask || '待命'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">任务进度：</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" :style="`width: ${$store.game.gameState.taskProgress || 0}%`">
+                        </div>
+                    </div>
+                    <span class="status-value" x-text="($store.game.gameState.taskProgress || 0) + '%'"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">系统日志：</span>
+                    <span class="status-value log" x-text="$store.game.gameState.systemLog || '系统待机中'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="messages-container" x-ref="messagesContainer">
+                <template x-for="(msg, index) in $store.game.messages" :key="msg.id">
+                    <div class="message" :class="msg.role">
+                        <div class="message-header">
+                            <span class="message-role"
+                                x-text="msg.role === 'user' ? $store.game.playerName : '旁白'"></span>
+                            <div class="message-actions">
+                                <button class="msg-action-btn" @click="$store.game.editMessage(index)"
+                                    title="编辑">✏️</button>
+                                <button class="msg-action-btn" @click="$store.game.deleteMessage(index)"
+                                    title="删除">🗑️</button>
+                                <button class="msg-action-btn"
+                                    x-show="index === $store.game.messages.length - 1 && msg.role === 'assistant'"
+                                    @click="$store.game.regenerateMessage()" title="重新生成">🔄</button>
+                            </div>
+                        </div>
+                        <div class="message-content" x-html="$store.game.formatMessage(msg.content)"></div>
+                    </div>
+                </template>
+
+                <!-- 正在生成提示 -->
+                <div class="message assistant generating" x-show="$store.game.generating">
+                    <div class="message-header">
+                        <span class="message-role">旁白</span>
+                    </div>
+                    <div class="message-content">
+                        <span class="typing-indicator">正在生成<span class="dots">...</span></span>
+                        <div class="generating-preview" x-text="$store.game.generatingContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area">
+            <textarea x-model="$store.game.inputText" placeholder="描述你的行动...（Ctrl+Enter 发送）"
+                :disabled="$store.game.generating" @keydown.ctrl.enter="$store.game.sendMessage()" rows="3"></textarea>
+            <button class="send-btn" @click="$store.game.sendMessage()"
+                :disabled="$store.game.generating || !$store.game.inputText.trim()">
+                <span x-show="!$store.game.generating">发送</span>
+                <span x-show="$store.game.generating">生成中...</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 存档管理弹窗 -->
+    <div class="modal-mask" x-show="$store.game.saveManagerOpen" x-transition
+        @click.self="$store.game.saveManagerOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>💾 存档管理</span>
+                <button @click="$store.game.saveManagerOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <template x-for="slot in [1,2,3,4,5]" :key="slot">
+                    <div class="save-slot">
+                        <div class="slot-info">
+                            <div class="slot-name">存档位 <span x-text="slot"></span></div>
+                            <div class="slot-meta" x-text="$store.game.getSaveInfo(slot)"></div>
+                        </div>
+                        <div class="slot-actions">
+                            <button @click="$store.game.saveToSlot(slot)" :disabled="!$store.game.started">保存</button>
+                            <button @click="$store.game.loadFromSlot(slot)"
+                                :disabled="!$store.game.hasSave(slot)">读取</button>
+                            <button class="danger" @click="$store.game.deleteSlot(slot)"
+                                :disabled="!$store.game.hasSave(slot)">删除</button>
+                        </div>
+                    </div>
+                </template>
+                <div class="save-note">
+                    💡 存档保存在浏览器本地，清除浏览器数据会丢失存档
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息编辑弹窗 -->
+    <div class="modal-mask" x-show="$store.game.editModalOpen" x-transition
+        @click.self="$store.game.editModalOpen = false">
+        <div class="modal edit-modal">
+            <div class="modal-header">
+                <span>✏️ 编辑消息</span>
+                <button @click="$store.game.editModalOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea x-model="$store.game.editingContent" rows="12"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button @click="$store.game.editModalOpen = false">取消</button>
+                <button class="primary" @click="$store.game.confirmEdit()">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 装备商店弹窗 -->
+    <div class="modal-mask" x-show="$store.game.shopOpen" x-transition @click.self="$store.game.shopOpen = false">
+        <div class="modal shop-modal">
+            <div class="modal-header">
+                <span>🏪 装备商店</span>
+                <span class="shop-score">💰 积分: <span x-text="$store.game.gameState.score"></span></span>
+                <button @click="$store.game.shopOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="shop-category">
+                    <h4>🔫 轻武器</h4>
+                    <div class="shop-items">
+                        <div class="shop-item" @click="$store.game.buyEquipment('捷克式轻机枪', 60)">
+                            <span class="item-name">捷克式轻机枪</span>
+                            <span class="item-price">60分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('MP40冲锋枪', 150)">
+                            <span class="item-name">MP40冲锋枪</span>
+                            <span class="item-price">150分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('M1汤姆逊冲锋枪', 200)">
+                            <span class="item-name">M1汤姆逊冲锋枪</span>
+                            <span class="item-price">200分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-category">
+                    <h4>💣 重火力</h4>
+                    <div class="shop-items">
+                        <div class="shop-item" @click="$store.game.buyEquipment('60mm迫击炮', 250)">
+                            <span class="item-name">60mm迫击炮</span>
+                            <span class="item-price">250分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('82mm迫击炮', 500)">
+                            <span class="item-name">82mm迫击炮</span>
+                            <span class="item-price">500分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('M2重机枪', 1500)">
+                            <span class="item-name">M2重机枪</span>
+                            <span class="item-price">1500分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-category">
+                    <h4>📦 弹药补给</h4>
+                    <div class="shop-items">
+                        <div class="shop-item" @click="$store.game.buyEquipment('标准弹药包', 20)">
+                            <span class="item-name">标准弹药包（1基数）</span>
+                            <span class="item-price">20分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('手榴弹箱', 30)">
+                            <span class="item-name">手榴弹箱（20枚）</span>
+                            <span class="item-price">30分</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-category">
+                    <h4>💊 后勤物资</h4>
+                    <div class="shop-items">
+                        <div class="shop-item" @click="$store.game.buyEquipment('磺胺药品', 20)">
+                            <span class="item-name">磺胺药品</span>
+                            <span class="item-price">20分</span>
+                        </div>
+                        <div class="shop-item" @click="$store.game.buyEquipment('军用电台', 300)">
+                            <span class="item-name">军用电台</span>
+                            <span class="item-price">300分</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div class="modal-mask" x-show="$store.game.settingsOpen" x-transition
+        @click.self="$store.game.settingsOpen = false">
+        <div class="modal settings-modal">
+            <div class="modal-header">
+                <span>⚙️ 设置</span>
+                <button @click="$store.game.settingsOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>API 接入点</label>
+                    <input type="text" x-model="$store.game.apiEndpoint">
+                </div>
+                <div class="form-group">
+                    <label>CORS代理模式</label>
+                    <select x-model="$store.game.corsMode">
+                        <option value="none">不使用代理</option>
+                        <option value="corsproxy">corsproxy.io</option>
+                        <option value="corsanywhere">cors-anywhere</option>
+                        <option value="allorigins">allorigins.win</option>
+                        <option value="custom">自定义代理</option>
+                    </select>
+                </div>
+                <div class="form-group" x-show="$store.game.corsMode === 'custom'">
+                    <label>自定义代理地址</label>
+                    <input type="text" x-model="$store.game.customCorsProxy">
+                </div>
+                <div class="form-group">
+                    <label>认证方式</label>
+                    <select x-model="$store.game.authType">
+                        <option value="bearer">Bearer Token</option>
+                        <option value="apikey">API-Key Header</option>
+                        <option value="basic">Basic Auth</option>
+                        <option value="none">无认证</option>
+                        <option value="custom">自定义Header</option>
+                    </select>
+                </div>
+                <div class="form-group" x-show="$store.game.authType !== 'none'">
+                    <label>API 密钥</label>
+                    <input type="text" x-model="$store.game.apiKey">
+                </div>
+                <div class="form-group">
+                    <label>流式响应</label>
+                    <select x-model="$store.game.useStream">
+                        <option value="true">启用流式</option>
+                        <option value="false">禁用流式</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>模型</label>
+                    <div class="model-select-row">
+                        <select x-model="$store.game.model">
+                            <template x-for="m in $store.game.modelList" :key="m">
+                                <option :value="m" x-text="m"></option>
+                            </template>
+                        </select>
+                        <button @click="$store.game.fetchModels()">刷新</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>手动模型名</label>
+                    <input type="text" x-model="$store.game.manualModel">
+                </div>
+                <div class="slider-group">
+                    <label>最大上下文 <span x-text="$store.game.maxContext.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.maxContext" min="0" max="1000000" step="1000">
+                </div>
+                <div class="slider-group">
+                    <label>最大回复 <span x-text="$store.game.maxReply.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.maxReply" min="0" max="100000" step="100">
+                </div>
+                <div class="slider-group">
+                    <label>思考长度 <span x-text="$store.game.thinkingBudget.toLocaleString()"></span></label>
+                    <input type="range" x-model.number="$store.game.thinkingBudget" min="0" max="24000" step="100">
+                </div>
+                <button class="test-btn full" @click="$store.game.testConnection()">🔌 测试连接</button>
+                <button class="reset-btn full" @click="$store.game.resetSettings()" style="margin-top:10px;">🔄
+                    重置设置</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
