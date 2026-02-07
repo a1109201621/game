@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>💕 妹妹琉璃</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="game.js"></script>
+</head>
+
+<body x-data="">
+    <!-- 加载中状态 -->
+    <div x-show="$store.game.loading" class="loading-container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p>正在初始化游戏...</p>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+        <div class="card">
+            <h1>💕 妹妹琉璃</h1>
+            <p class="subtitle">你的亲生妹妹，自幼由你抚养长大。她的态度完全取决于一个秘密...</p>
+
+            <div class="form-group">
+                <label>你的名字：</label>
+                <input x-model="$store.game.player_name" placeholder="请输入你的名字" />
+            </div>
+
+            <div class="form-group">
+                <label>你的长度（cm）：</label>
+                <div class="size-input-container">
+                    <input type="range" min="5" max="25" step="0.5" x-model="$store.game.player_size"
+                        class="size-slider" />
+                    <div class="size-display">
+                        <span x-text="$store.game.player_size + ' cm'"></span>
+                        <span class="size-indicator" :class="$store.game.getSizeClass()"></span>
+                    </div>
+                </div>
+                <p class="size-hint" x-text="$store.game.getSizeHint()"></p>
+            </div>
+
+            <button @click="$store.game.start()" :disabled="!$store.game.player_name">
+                🎮 开始游戏
+            </button>
+
+            <div class="instructions">
+                <h3>🎯 玩法说明：</h3>
+                <ul>
+                    <li>琉璃是你的亲生妹妹，从小由你抚养</li>
+                    <li>你设置的长度将完全决定她对你的态度</li>
+                    <li>≥15cm：她会变成顺从的小猫咪</li>
+                    <li>
+                        <15cm：她会变成蔑视一切的女王< /li>
+                    <li>通过对话探索不同的剧情发展</li>
+                </ul>
+            </div>
+
+            <button class="load-save-btn" @click="$store.game.loadSave()" x-show="$store.game.hasSave" x-transition>
+                📂 读取存档
+            </button>
+        </div>
+
+        <!-- 读取存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showLoadSlots" x-transition
+            @click.self="$store.game.showLoadSlots = false">
+            <div class="save-modal">
+                <h2>📂 选择存档</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'玩家: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="size-info"
+                                        x-text="'长度: ' + (slot.data?.player_size || '?') + 'cm'"></span>
+                                </div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-load-btn" @click="$store.game.loadFromSlot(slot.index)"
+                                    :disabled="slot.isEmpty">
+                                    读取
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showLoadSlots = false">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="game">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div class="character-info">
+                <span class="character-name">琉璃</span>
+                <span class="mood-badge" :class="$store.game.state.mood">
+                    <span x-text="$store.game.getMoodEmoji()"></span>
+                    <span x-text="$store.game.state.mood"></span>
+                </span>
+            </div>
+            <div class="status-actions">
+                <div class="status-pills">
+                    <span class="status-pill affection" :title="'好感度: ' + $store.game.state.affection + '%'">
+                        ❤️ <span x-text="$store.game.state.affection"></span>%
+                    </span>
+                    <span class="status-pill lewdness" :title="'色气值: ' + $store.game.state.lewdness + '%'">
+                        🔥 <span x-text="$store.game.state.lewdness"></span>%
+                    </span>
+                </div>
+                <select class="model-selector" x-model="$store.game.currentModel">
+                    <option value="nalang-turbo-0826">⚡ Turbo</option>
+                    <option value="nalang-medium-0826">⚖️ Medium</option>
+                    <option value="nalang-max-0826">💎 Max</option>
+                    <option value="nalang-xl-0826">🚀 XL</option>
+                </select>
+                <button class="save-btn" @click="$store.game.saveGame()" :disabled="$store.game.disabled">
+                    💾 保存
+                </button>
+                <button class="status-toggle-btn" @click="$store.game.showStatusPanel = !$store.game.showStatusPanel">
+                    <span x-text="$store.game.showStatusPanel ? '✕ 关闭' : '📊 状态'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 状态面板 -->
+        <div class="status-panel" x-show="$store.game.showStatusPanel" x-transition>
+            <h3>📊 琉璃的状态</h3>
+            <p class="panel-hint">当前长度模式：<span :class="$store.game.getSizeClass()"
+                    x-text="$store.game.getSizeModeText()"></span></p>
+
+            <div class="status-grid">
+                <div class="status-item">
+                    <label>心情</label>
+                    <span x-text="$store.game.state.mood"></span>
+                </div>
+                <div class="status-item">
+                    <label>好感度</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill affection" :style="'width: ' + $store.game.state.affection + '%'">
+                        </div>
+                    </div>
+                    <span x-text="$store.game.state.affection + '%'"></span>
+                </div>
+                <div class="status-item">
+                    <label>色气值</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill lewdness" :style="'width: ' + $store.game.state.lewdness + '%'"></div>
+                    </div>
+                    <span x-text="$store.game.state.lewdness + '%'"></span>
+                </div>
+                <div class="status-item">
+                    <label>服装</label>
+                    <span x-text="$store.game.state.clothing"></span>
+                </div>
+                <div class="status-item">
+                    <label>地点</label>
+                    <span x-text="$store.game.state.location"></span>
+                </div>
+                <div class="status-item">
+                    <label>时间</label>
+                    <span x-text="$store.game.state.time"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="chat-messages" id="chatMessages">
+                <template x-for="(msg, index) in $store.game.messages" :key="index">
+                    <div class="message" :class="msg.role">
+                        <div class="message-speaker"
+                            x-text="msg.role === 'user' ? $store.game.player_name : (msg.speaker || '琉璃')"></div>
+                        <div class="message-content" x-html="msg.content"></div>
+                    </div>
+                </template>
+
+                <div class="message assistant" x-show="$store.game.streaming">
+                    <div class="message-speaker">琉璃</div>
+                    <div class="message-content"
+                        x-html="$store.game.streamContent || '<span class=\'loading\'>...</span>'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area" :class="{ 'is-loading': $store.game.streaming }">
+            <input x-model="$store.game.input" placeholder="输入你想说的话..." :disabled="$store.game.disabled"
+                @keydown.enter="$store.game.send()" />
+            <button @click="$store.game.send()" :disabled="$store.game.disabled || !$store.game.input">发送</button>
+        </div>
+
+        <!-- 保存提示 -->
+        <div class="save-toast" x-show="$store.game.saveToast" x-transition>
+            ✅ <span x-text="$store.game.saveToastMessage"></span>
+        </div>
+
+        <!-- 保存存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showSaveSlots" x-transition
+            @click.self="$store.game.showSaveSlots = false">
+            <div class="save-modal">
+                <h2>💾 选择存档位</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty, 'has-data': !slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'玩家: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="size-info"
+                                        x-text="'长度: ' + (slot.data?.player_size || '?') + 'cm'"></span>
+                                </div>
+                                <div class="overwrite-warning">⚠️ 将覆盖现有存档</div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-save-btn" @click="$store.game.saveToSlot(slot.index)">
+                                    <span x-text="slot.isEmpty ? '保存' : '覆盖保存'"></span>
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showSaveSlots = false">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug 按钮 (已注释) 
+    <button class="debug-btn" @click="$store.game.showDebug = !$store.game.showDebug" title="Debug">
+        🐛
+    </button>
+    -->
+
+    <!-- Debug 面板 (已注释) 
+    <div class="debug-panel" x-show="$store.game.showDebug" x-transition>
+        <div class="debug-header">
+            <h3>🐛 Debug 信息</h3>
+            <button @click="$store.game.showDebug = false">✕</button>
+        </div>
+        <div class="debug-content">
+            <div class="debug-section">
+                <h4>最近请求</h4>
+                <pre x-text="$store.game.debugInfo.lastRequest || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>最近响应</h4>
+                <pre x-text="$store.game.debugInfo.lastResponse || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>错误日志</h4>
+                <pre x-text="$store.game.debugInfo.errors.join('\n') || '暂无错误'"></pre>
+            </div>
+        </div>
+        <button class="debug-clear-btn" @click="$store.game.clearDebug()">清空日志</button>
+    </div>
+    -->
+</body>
+
+</html>

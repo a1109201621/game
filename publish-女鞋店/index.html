@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>👠 女鞋店 - 试鞋服务</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="game.js"></script>
+</head>
+
+<body x-data="">
+    <!-- 加载中状态 -->
+    <div x-show="$store.game.loading" class="loading-container">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p>正在开启您的鞋店...</p>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+        <div class="card">
+            <h1>👠 女鞋店</h1>
+            <p class="subtitle">您作为店主，为女顾客提供专业的试鞋服务...</p>
+
+            <div class="form-group">
+                <label>店主名字：</label>
+                <input x-model="$store.game.player_name" placeholder="请输入你的名字" />
+            </div>
+
+            <button @click="$store.game.start()" :disabled="!$store.game.player_name">
+                🏪 开店营业
+            </button>
+
+            <div class="instructions">
+                <h3>🎯 游戏说明：</h3>
+                <ul>
+                    <li>您是一家高档女鞋店的店主</li>
+                    <li>为女顾客提供专业的试鞋服务</li>
+                    <li>可以自由与顾客的玉足互动</li>
+                    <li>但只能触碰脚部，其他部位严禁触碰</li>
+                    <li>不同顾客会有不同的足部特征和香气</li>
+                    <li>观察顾客的陪同者的反应增添情趣</li>
+                </ul>
+            </div>
+
+            <button class="load-save-btn" @click="$store.game.loadSave()" x-show="$store.game.hasSave" x-transition>
+                📂 读取存档
+            </button>
+        </div>
+
+        <!-- 读取存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showLoadSlots" x-transition
+            @click.self="$store.game.showLoadSlots = false">
+            <div class="save-modal">
+                <h2>📂 选择存档</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'店主: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="customer-count"
+                                        x-text="'顾客数: ' + (slot.data?.state?.customerServed || 0)"></span>
+                                </div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-load-btn" @click="$store.game.loadFromSlot(slot.index)"
+                                    :disabled="slot.isEmpty">
+                                    读取
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showLoadSlots = false">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="game">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div class="character-info">
+                <span class="shop-name">👠 女鞋店</span>
+                <span class="time-badge">
+                    <span x-text="$store.game.state.timeOfDay"></span>
+                </span>
+            </div>
+            <div class="status-actions">
+                <select class="model-selector" x-model="$store.game.currentModel">
+                    <option value="nalang-turbo-0826">⚡ Turbo</option>
+                    <option value="nalang-medium-0826">⚖️ Medium</option>
+                    <option value="nalang-max-0826">💎 Max</option>
+                    <option value="nalang-xl-0826">🚀 XL</option>
+                </select>
+                <button class="save-btn" @click="$store.game.saveGame()" :disabled="$store.game.disabled">
+                    💾 保存
+                </button>
+                <button class="status-toggle-btn" @click="$store.game.showStatusPanel = !$store.game.showStatusPanel">
+                    <span x-text="$store.game.showStatusPanel ? '✕ 关闭' : '📊 状态'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 状态面板 -->
+        <div class="status-panel" x-show="$store.game.showStatusPanel" x-transition>
+            <h3>📊 当前顾客状态</h3>
+
+            <div class="status-grid">
+                <div class="status-item full-width">
+                    <label>姓名</label>
+                    <span x-text="$store.game.state.customerName || '等待顾客'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>玉足</label>
+                    <span class="foot-desc" x-text="$store.game.state.feet || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>脚心</label>
+                    <span class="foot-desc" x-text="$store.game.state.soles || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>脚趾</label>
+                    <span class="foot-desc" x-text="$store.game.state.toes || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>脚汗</label>
+                    <span class="foot-desc" x-text="$store.game.state.footSweat || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>丝袜</label>
+                    <span class="foot-desc" x-text="$store.game.state.stockings || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>鞋</label>
+                    <span class="foot-desc" x-text="$store.game.state.shoes || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>足香</label>
+                    <span class="foot-desc scent" x-text="$store.game.state.footScent || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>大腿</label>
+                    <span class="foot-desc" x-text="$store.game.state.thighs || '暂无'"></span>
+                </div>
+                <div class="status-item full-width">
+                    <label>小腿</label>
+                    <span class="foot-desc" x-text="$store.game.state.calves || '暂无'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="chat-messages" id="chatMessages">
+                <template x-for="(msg, index) in $store.game.messages" :key="index">
+                    <div class="message" :class="msg.role">
+                        <div class="message-speaker"
+                            x-text="msg.role === 'user' ? $store.game.player_name : (msg.speaker || '旁白')"></div>
+                        <div class="message-content" x-html="msg.content"></div>
+                        <!-- 消息操作按钮 -->
+                        <div class="message-actions" x-show="!$store.game.disabled">
+                            <button class="action-btn edit-btn" @click="$store.game.editMessage(index)" title="编辑">
+                                ✏️
+                            </button>
+                            <button class="action-btn delete-btn" @click="$store.game.deleteMessage(index)" title="删除">
+                                🗑️
+                            </button>
+                            <button class="action-btn regenerate-btn" @click="$store.game.regenerateMessage(index)"
+                                x-show="msg.role === 'assistant' && index === $store.game.messages.length - 1"
+                                title="重新生成">
+                                🔄
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="message assistant" x-show="$store.game.streaming">
+                    <div class="message-speaker">旁白</div>
+                    <div class="message-content"
+                        x-html="$store.game.streamContent || '<span class=\'loading\'>...</span>'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑消息弹窗 -->
+        <div class="edit-modal-overlay" x-show="$store.game.showEditModal" x-transition
+            @click.self="$store.game.showEditModal = false">
+            <div class="edit-modal">
+                <h2>✏️ 编辑消息</h2>
+                <textarea x-model="$store.game.editContent" rows="6" placeholder="编辑消息内容..."></textarea>
+                <div class="edit-actions">
+                    <button class="cancel-btn" @click="$store.game.showEditModal = false">取消</button>
+                    <button class="confirm-btn" @click="$store.game.confirmEdit()">确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area" :class="{ 'is-loading': $store.game.streaming }">
+            <input x-model="$store.game.input" placeholder="输入你的行动或对话..." :disabled="$store.game.disabled"
+                @keydown.enter="$store.game.send()" />
+            <button class="new-customer-btn" @click="$store.game.newCustomer()" :disabled="$store.game.disabled">
+                👩 新顾客
+            </button>
+            <button @click="$store.game.send()" :disabled="$store.game.disabled || !$store.game.input">发送</button>
+        </div>
+
+        <!-- 保存提示 -->
+        <div class="save-toast" x-show="$store.game.saveToast" x-transition>
+            ✅ <span x-text="$store.game.saveToastMessage"></span>
+        </div>
+
+        <!-- 保存存档弹窗 -->
+        <div class="save-modal-overlay" x-show="$store.game.showSaveSlots" x-transition
+            @click.self="$store.game.showSaveSlots = false">
+            <div class="save-modal">
+                <h2>💾 选择存档位</h2>
+                <div class="save-slots">
+                    <template x-for="slot in $store.game.saveSlots" :key="slot.index">
+                        <div class="save-slot" :class="{ 'is-empty': slot.isEmpty, 'has-data': !slot.isEmpty }">
+                            <div class="slot-header">
+                                <span class="slot-number" x-text="'存档 ' + (slot.index + 1)"></span>
+                                <span class="slot-time" x-show="!slot.isEmpty"
+                                    x-text="$store.game.formatSaveTime(slot.data?.timestamp)"></span>
+                            </div>
+                            <div class="slot-content" x-show="!slot.isEmpty">
+                                <div class="slot-info">
+                                    <span class="player-name" x-text="'店主: ' + (slot.data?.player_name || '未知')"></span>
+                                    <span class="customer-count"
+                                        x-text="'顾客数: ' + (slot.data?.state?.customerServed || 0)"></span>
+                                </div>
+                                <div class="overwrite-warning">⚠️ 将覆盖现有存档</div>
+                            </div>
+                            <div class="slot-empty" x-show="slot.isEmpty">
+                                <span>空存档位</span>
+                            </div>
+                            <div class="slot-actions">
+                                <button class="slot-save-btn" @click="$store.game.saveToSlot(slot.index)">
+                                    <span x-text="slot.isEmpty ? '保存' : '覆盖保存'"></span>
+                                </button>
+                                <button class="slot-delete-btn" @click="$store.game.deleteSave(slot.index)"
+                                    x-show="!slot.isEmpty">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button class="modal-close-btn" @click="$store.game.showSaveSlots = false">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug 按钮 (已注释) 
+    <button class="debug-btn" @click="$store.game.showDebug = !$store.game.showDebug" title="Debug">
+        🐛
+    </button>
+    -->
+
+    <!-- Debug 面板 (已注释)
+    <div class="debug-panel" x-show="$store.game.showDebug" x-transition>
+        <div class="debug-header">
+            <h3>🐛 Debug 信息</h3>
+            <button @click="$store.game.showDebug = false">✕</button>
+        </div>
+        <div class="debug-content">
+            <div class="debug-section">
+                <h4>最近请求</h4>
+                <pre x-text="$store.game.debugInfo.lastRequest || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>最近响应</h4>
+                <pre x-text="$store.game.debugInfo.lastResponse || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <h4>错误日志</h4>
+                <pre x-text="$store.game.debugInfo.errors.join('\n') || '暂无错误'"></pre>
+            </div>
+        </div>
+        <button class="debug-clear-btn" @click="$store.game.clearDebug()">清空日志</button>
+    </div>
+    -->
+</body>
+
+</html>

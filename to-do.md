@@ -1,130 +1,96 @@
 # 游戏开发 To-Do
 
-> 首先阅读帮助文档.txt，然后参考示例1、示例2、示例3和独立游戏示例（如果用户有说明）进行游戏开发，并将游戏的文件存储在 `publish-{游戏名}` 文件夹中
+> 首先阅读README.md，然后参考示例1、示例2、示例3和独立游戏示例（如果用户有说明）进行游戏开发，并将游戏的文件存储在 `publish-{游戏名}` 文件夹中
 
 ---
 
-## 核心功能
+然后帮我写成游戏卡：
+1：存档系统（dzmm.kz）
+2：编辑、重新生成、删除任意消息功能（重新生成仅限最新消息）
+3：将游戏玩法写在主界面
+4：跳过加载页面的按钮
+5：debug按钮（在网页最上层），收集每次发送、收到的提示词，收集可能出现的错误（各种错误，例如：有些用户反映一直卡在加载）
 
-### 1. 存档系统（dzmm.kv）
+游戏要求：
 
-- [ ] 实现手动存档/读档功能（3个存档位）
-- [ ] 存档信息展示（时代、信仰、进步、时间戳）
-- [ ] 存档数据结构设计（状态 + 历史对话上下文）
-- [ ] localStorage 作为 kv API 的降级方案
+状态栏:
 
-### 2. 消息管理功能
+```
+姓名:{{顾客姓名}}
+玉足: {{Requires dynamic description of the overall appearance of both feet, including the size of the soles, the arch of the instep, and the gait changes while walking. Feet are long and fair-skinned, emanating a faint body fragrance, every step is graceful}}
+脚心: {{Detailed description of the sole's tenderness and sensitivity when touched. Toes curl involuntarily when caressed, accompanied by soft moans. The sole emits a unique sweet fragrance}}
+脚趾: {{Dynamic description of all ten toes' form, including the arrangement from big toe to little toe, and their reactions when played with. Toes are round and cute, painted with bright nail polish, moving unconsciously when touched}}
+脚汗: {{Description of feet sweating conditions during exercise or when nervous, sweat flowing between toe gaps with a slight salty fragrance. The appearance of stockings when wet and clinging to feet}}
+丝袜: {{Detailed description of stocking material, color, and transparency. The tight feeling of stockings wrapping feet, the sensation of friction between stockings and skin while walking, and the scene when stockings are torn}}
+鞋: {{Description of how different shoes look on feet, including high heels, sneakers, and other styles. The motion of removing shoes, and the remaining warmth and scent inside}}
+足香: {{Describe the special scent emitted from feet, including changes at different times. Light body fragrance in the morning, unique salty scent after exercise. Scent changes when wearing different shoes, and the alluring aroma that comes after removing shoes and stockings. Foot scent varies with sweating level, wearing time, seasonal changes, sometimes carrying a light sweet fragrance, sometimes a rich mature scent}}
+大腿: {{Dynamic description of thigh skin texture, fullness, and elasticity. Inner thighs are especially sensitive, trembling at light touches. Thigh contours partially visible under skirts}}
+小腿: {{Description of calf line aesthetics, muscle firmness. Changes in calf muscles while walking, and the alluring curves when wearing stockings}}
+```
 
-- [ ] **编辑消息**：允许用户编辑任意历史消息
-- [ ] **重新生成**：仅限最新一条 AI 回复可重新生成
-- [ ] **删除消息**：允许删除任意消息（需确认提示）
-- [ ] 操作后自动更新对话历史和 dzmm.chat
+具体游戏内容:
 
-### 3. 主界面玩法说明
+```
+<shop>
+{
+  "店铺设定": {
+    "类型": "女鞋店",
+    "经营者": "{{user}}",
+    "主要业务": "销售女鞋及提供试鞋服务"
+  },
+  "顾客设定": {
+    "性别": "女性",
+    "陪同": ["父亲", "男友", "丈夫", "情人"],
+    "试鞋许可": true
+  },
+  "互动规则": {
+    "基本服务": "为顾客试鞋",
+    "允许行为": "对顾客脚部进行任何互动",
+    "禁止行为": "触碰其他私密部位"
+  },
+  "脚部气味类型": {
+    "运动少女": {
+      "特征": "淡淡汗臭味",
+      "场景": "刚运动完来店里的年轻女性"
+    },
+    "长靴女性": {
+      "特征": "浓烈汗味",
+      "场景": "穿着长靴前来的女性顾客"
+    },
+    "凉鞋/拖鞋": {
+      "特征": "淡淡清香",
+      "场景": "穿着露趾鞋款的女性"
+    },
+    "丝袜女性": {
+      "特征": "香水味",
+      "场景": "穿着丝袜的优雅女性"
+    },
+    "其他变体": {
+      "特征": "根据具体情况随机生成",
+      "说明": "可依据顾客特征灵活设定不同气味类型"
+    }
+  },
+  "场景补充": {
+    "营业时间": "正常营业时间",
+    "环境氛围": "专业且私密",
+    "服务态度": "周到专业",
+    "互动限制": "仅限于试鞋相关服务"
+  }
+}
+</shop>
 
-- [ ] 在设置界面添加完整玩法规则区块
-- [ ] 包含：模式说明、信仰机制、进步点机制、战争规则、侦查功能
-- [ ] 可折叠/展开的规则面板
-
-### 4. 跳过加载页面
-
-- [ ] 添加"跳过"按钮在加载页面
-- [ ] 跳过后直接进入设置界面
-- [ ] 设置合理的超时时间（如3秒后自动显示跳过按钮）
-
-### 5. Debug 调试系统
-
-- [ ] 浮动 Debug 按钮（网页最上层，可拖拽）
-- [ ] **提示词收集**：记录每次发送给 AI 的完整 messages
-- [ ] **响应收集**：记录每次 AI 返回的完整内容
-- [ ] **错误捕获**：
-  - API 调用失败
-  - JSON 解析错误
-  - 网络超时
-  - SDK 初始化失败（卡在加载问题）
-- [ ] Debug 面板：可查看/导出所有日志
-- [ ] 一键复制日志功能
-
----
-
-## 用户体验优化
-
-### 6. 加载与反馈
-
-- [ ] 加载状态优化（显示具体加载步骤）
-- [ ] 操作按钮禁用状态的视觉反馈
-- [ ] 长时间无响应的超时提示（如30秒）
-- [ ] 网络断开检测与提示
-
-### 7. 界面交互
-
-- [ ] 消息输入框自动聚焦
-- [ ] 快捷键支持（Enter 发送、Esc 关闭弹窗）
-- [ ] 弹窗/抽屉点击外部关闭
-- [ ] 滚动优化（新消息自动滚动到底部）
-
-### 8. 响应式适配
-
-- [ ] 移动端布局优化
-- [ ] 触摸事件适配
-- [ ] 小屏幕下的弹窗/抽屉尺寸调整
-
----
-
-## 游戏功能增强
-
-### 9. 对话系统
-
-- [ ] 对话历史显示（可滚动查看之前的对话）
-- [ ] 分支对话支持（基于 dzmm.chat 的树状结构）
-- [ ] 对话导出功能
-
-### 10. 状态可视化
-
-- [ ] 信仰/进步的变化动画效果
-- [ ] 时代推进的过场动画
-- [ ] 战争结果的特效展示
-
-### 11. 数据持久化
-
-- [ ] 自动保存最近一次游戏状态
-- [ ] 游戏退出前的保存提示
-- [ ] 多设备同步（基于 dzmm.kv）
-
----
-
-## 代码质量
-
-### 12. 错误处理
-
-- [ ] 全局错误边界
-- [ ] API 调用的 try-catch 包装
-- [ ] 用户友好的错误提示
-
-### 13. 性能优化
-
-- [ ] 大量对话历史的虚拟滚动
-- [ ] 图片懒加载
-- [ ] 防抖/节流处理
-
-### 14. 代码结构
-
-- [ ] 代码注释完善
-- [ ] 函数职责单一化
-- [ ] 常量/配置抽离
-
----
-
-## 测试与部署
-
-### 15. 测试
-
-- [ ] 核心功能手动测试清单
-- [ ] 边界情况测试（空输入、超长输入等）
-- [ ] 不同模型的兼容性测试
-
-### 16. 发布
-
-- [ ] 确保 publish 目录结构正确
-- [ ] 资源路径检查（相对路径）
-- [ ] 发布前的最终测试
+<reply_format>
+当有新顾客前来购物时:
+  首先介绍女顾客和男伴的姓名,长相,关系,然后描写两人之间的对话,动作,etc.
+  其次女顾客向{{user}}提出试鞋请求
+    !!important!! 禁止输出{{user}}的回应 !!important!!
+  试鞋过程中,男伴要目不转睛的看着{{user}}玩弄女顾客的玉足
+  女顾客对{{user}}玩弄自己的玉足感到理所当然
+  当{{user}}想要玩弄其他地方时,会严厉拒绝{{user}}
+rule:
+  为出场的NPC赋予一个有含义的姓名,禁止是"小X","啊X"等等
+  描写时应着重描写女性的[鞋,袜,脚]的[味道,形状,褶皱,动作,etc]
+  不能阻止{{user}}玩弄自己的脚
+  禁止{{user}}玩弄除了脚以外的其他任何地方
+</reply_format>
+```
