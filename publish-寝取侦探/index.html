@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body x-data="">
+
+    <!-- 加载界面 -->
+    <div class="loading-screen" x-show="$store.game.loading" x-transition>
+        <div class="loading-card">
+            <div class="loading-icon">🔍</div>
+            <div class="loading-sub">真相，就在你看不见的地方...</div>
+            <div class="loading-spinner"></div>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- 主菜单界面 -->
+    <div class="main-menu" x-show="!$store.game.started && !$store.game.loading && !$store.game.inGame" x-transition>
+        <div class="menu-card">
+            <div class="menu-header">
+                <p class="subtitle">真相，就在你看不见的地方</p>
+            </div>
+
+            <!-- 游戏玩法说明 -->
+            <div class="gameplay-info">
+                <h3>📜 游戏玩法</h3>
+                <div class="info-content">
+                    <p><strong>🎓 背景设定：</strong>你是一个普通的高中生，和女友过着甜蜜的校园生活。直到一天，班上转来了一个叫黄毛的新同学...</p>
+                </div>
+            </div>
+
+            <!-- 角色设置 -->
+            <div class="settings-section">
+                <h3>👤 角色设置</h3>
+                <div class="form-group">
+                    <label>你的名字</label>
+                    <input type="text" x-model="$store.game.playerName" placeholder="输入你的名字">
+                </div>
+                <div class="form-group">
+                    <label>回复字数下限: <span x-text="$store.game.replyMinChars"></span> 字</label>
+                    <input type="range" min="200" max="2000" step="50" x-model.number="$store.game.replyMinChars"
+                        @input="if($store.game.replyMinChars > $store.game.replyMaxChars) $store.game.replyMaxChars = $store.game.replyMinChars"
+                        style="width:100%;accent-color:var(--accent-pink);">
+                </div>
+                <div class="form-group">
+                    <label>回复字数上限: <span x-text="$store.game.replyMaxChars"></span> 字</label>
+                    <input type="range" min="200" max="2000" step="50" x-model.number="$store.game.replyMaxChars"
+                        @input="if($store.game.replyMaxChars < $store.game.replyMinChars) $store.game.replyMinChars = $store.game.replyMaxChars"
+                        style="width:100%;accent-color:var(--accent-pink);">
+                </div>
+                <div class="form-group">
+                    <label>AI 模型</label>
+                    <select x-model="$store.game.selectedModel">
+                        <option value="nalang-turbo-0826">nalang-turbo（快速经济）</option>
+                        <option value="nalang-medium-0826">nalang-medium（平衡性能）</option>
+                        <option value="nalang-max-0826">nalang-max（高质量）</option>
+                        <option value="nalang-xl-0826">nalang-xl（最强模型）</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 按钮组 -->
+            <div class="menu-buttons">
+                <button class="primary-btn" @click="$store.game.startNewGame()" :disabled="!$store.game.playerName">
+                    🎮 开始新游戏
+                </button>
+                <button class="secondary-btn" @click="$store.game.openSaveManager()">
+                    💾 存档管理
+                </button>
+            </div>
+
+            <div class="start-hint" x-show="!$store.game.playerName">
+                ⚠️ 请输入你的名字
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div class="game-screen" x-show="$store.game.inGame && !$store.game.loading" x-transition>
+        <!-- 顶部栏 -->
+        <div class="game-topbar">
+            <div class="topbar-left">
+                <span class="day-info">📅 第 <span x-text="$store.game.currentDay"></span> 天</span>
+                <span class="explore-info">🔎 探索次数: <span x-text="$store.game.exploreCount"></span>/3</span>
+            </div>
+            <div class="topbar-right">
+                <button class="icon-btn" @click="$store.game.normalStatusOpen = !$store.game.normalStatusOpen"
+                    title="普通状态" :class="{ active: $store.game.normalStatusOpen }">📋</button>
+                <button class="icon-btn" @click="$store.game.toggleHiddenStatus()" title="隐藏状态"
+                    :class="{ active: $store.game.hiddenStatusOpen }" :disabled="!$store.game.watchGifted">
+                    <span x-text="$store.game.watchGifted ? '🔓' : '🔒'"></span>
+                </button>
+                <button class="icon-btn" @click="$store.game.cluesPanelOpen = !$store.game.cluesPanelOpen" title="线索面板"
+                    :class="{ active: $store.game.cluesPanelOpen }">🧩</button>
+                <button class="icon-btn" @click="$store.game.openSaveManager()" title="存档">💾</button>
+                <button class="icon-btn" @click="$store.game.backToMenu()" title="主菜单">🏠</button>
+            </div>
+        </div>
+
+        <!-- 普通状态栏 -->
+        <div class="status-bar normal-status" x-show="$store.game.normalStatusOpen" x-transition>
+            <div class="status-header">
+                <span>📋 <span x-text="$store.game.getGirlfriendName()"></span> 的状态</span>
+                <button @click="$store.game.normalStatusOpen = false">✕</button>
+            </div>
+            <div class="status-content">
+                <div class="status-row">
+                    <span class="status-label">姓名：</span>
+                    <span class="status-value" x-text="$store.game.normalStatus.name || '???'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">衣着：</span>
+                    <span class="status-value" x-text="$store.game.normalStatus.clothing || '校服'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">动作：</span>
+                    <span class="status-value" x-text="$store.game.normalStatus.action || '站立'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">心情：</span>
+                    <span class="status-value" x-text="$store.game.normalStatus.mood || '开心'"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">内心：</span>
+                    <span class="status-value" x-text="$store.game.normalStatus.innerThought || '和男朋友在一起真开心'"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">当前线索：</span>
+                    <span class="status-value">
+                        <template x-for="clue in $store.game.normalStatus.clues" :key="clue.name">
+                            <span class="clue-tag"
+                                :class="{ 'key-clue': clue.type === 'key', 'undiscovered': !clue.discovered }"
+                                @click="clue.discovered && $store.game.viewClueDetail(clue)"
+                                :style="clue.discovered ? 'cursor:pointer' : ''">
+                                <span x-text="clue.discovered ? clue.name : '???'"></span>
+                            </span>
+                        </template>
+                        <span x-show="$store.game.normalStatus.clues.length === 0" class="no-clue">暂无线索</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隐藏状态栏 -->
+        <div class="status-bar hidden-status" x-show="$store.game.hiddenStatusOpen && $store.game.watchGifted"
+            x-transition>
+            <div class="status-header">
+                <span>🔓 隐藏状态（运动手表数据）</span>
+                <button @click="$store.game.hiddenStatusOpen = false">✕</button>
+            </div>
+            <div class="status-content">
+                <div class="status-row">
+                    <span class="status-label">子宫内精液：</span>
+                    <span class="status-value danger" x-text="$store.game.hiddenStatus.semen || '无'"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">口交次数：</span>
+                    <span class="status-value danger" x-text="$store.game.hiddenStatus.sexExp.oral"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">肛交次数：</span>
+                    <span class="status-value danger" x-text="$store.game.hiddenStatus.sexExp.anal"></span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">中出次数：</span>
+                    <span class="status-value danger" x-text="$store.game.hiddenStatus.sexExp.creampie"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">真实内心 - 性欲：</span>
+                    <span class="status-value danger" x-text="$store.game.hiddenStatus.trueInner.lust || '???'"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">真实内心 - 对用户的鄙夷：</span>
+                    <span class="status-value danger"
+                        x-text="$store.game.hiddenStatus.trueInner.contempt || '???'"></span>
+                </div>
+                <div class="status-row full">
+                    <span class="status-label">真实内心 - 欲望：</span>
+                    <span class="status-value danger"
+                        x-text="$store.game.hiddenStatus.trueInner.desire || '???'"></span>
+                </div>
+                <div class="status-row full mystery-row">
+                    <span class="status-label">???：</span>
+                    <span class="status-value" x-text="$store.game.hiddenStatus.mystery"></span>
+                    <button class="release-btn" x-show="$store.game.canRelease"
+                        @click="$store.game.triggerRelease()">解除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 线索面板 -->
+        <div class="clues-panel" x-show="$store.game.cluesPanelOpen" x-transition>
+            <div class="status-header">
+                <span>🧩 线索面板</span>
+                <button @click="$store.game.cluesPanelOpen = false">✕</button>
+            </div>
+            <div class="clues-content">
+                <div class="clue-category">
+                    <h4>📌 普通线索 (<span x-text="$store.game.getNormalClueCount()"></span>)</h4>
+                    <div class="clue-list">
+                        <template x-for="clue in $store.game.getCluesByType('normal')" :key="clue.id">
+                            <div class="clue-item normal">
+                                <span class="clue-icon">📎</span>
+                                <span x-text="clue.name"></span>
+                                <span class="clue-location" x-text="'(' + clue.location + ')'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="clue-category">
+                    <h4>⭐ 关键线索 (<span x-text="$store.game.getKeyClueCount()"></span>/<span
+                            x-text="$store.game.totalKeyClues"></span>)</h4>
+                    <div class="clue-list">
+                        <template x-for="clue in $store.game.getCluesByType('key')" :key="clue.id">
+                            <div class="clue-item key">
+                                <span class="clue-icon">⭐</span>
+                                <span x-text="clue.name"></span>
+                                <div class="clue-actions" x-show="clue.action">
+                                    <button class="clue-action-btn" @click="$store.game.useClue(clue)"
+                                        x-text="clue.action" :disabled="clue.used"></button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="clue-synthesis" x-show="$store.game.canSynthesize">
+                    <button class="synthesis-btn" @click="$store.game.synthesizeClues()">
+                        🔮 合成所有线索 - 揭开真相
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 探索面板 -->
+        <div class="explore-panel" x-show="$store.game.explorePanelOpen" x-transition>
+            <div class="status-header">
+                <span>🔎 探索 (剩余 <span x-text="3 - $store.game.exploreCount"></span> 次)</span>
+                <button @click="$store.game.explorePanelOpen = false">✕</button>
+            </div>
+            <div class="explore-content">
+                <!-- 地点选择 -->
+                <div class="locations" x-show="!$store.game.selectedLocation">
+                    <h4>选择探索地点：</h4>
+                    <div class="location-grid">
+                        <template x-for="loc in $store.game.locations" :key="loc.id">
+                            <button class="location-card" @click="$store.game.selectLocation(loc)"
+                                :disabled="$store.game.exploreCount >= 3">
+                                <span class="loc-icon" x-text="loc.icon"></span>
+                                <span class="loc-name" x-text="loc.name"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <!-- 物品选择 -->
+                <div class="spot-list" x-show="$store.game.selectedLocation">
+                    <h4>
+                        <span x-text="$store.game.selectedLocation?.icon"></span>
+                        <span x-text="$store.game.selectedLocation?.name"></span> - 选择探索点：
+                        <button class="back-btn" @click="$store.game.selectedLocation = null">返回</button>
+                    </h4>
+                    <div class="spot-grid">
+                        <template x-for="spot in $store.game.selectedLocation?.spots || []" :key="spot.id">
+                            <button class="spot-card" @click="$store.game.exploreSpot(spot)"
+                                :disabled="spot.explored || $store.game.exploreCount >= 3"
+                                :class="{ explored: spot.explored }">
+                                <span class="spot-icon" x-text="spot.icon"></span>
+                                <span class="spot-name" x-text="spot.name"></span>
+                                <span class="spot-status" x-show="spot.explored">已探索</span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="messages-container" x-ref="messagesContainer">
+                <template x-for="(msg, index) in $store.game.messages" :key="msg.id">
+                    <div class="message" :class="msg.role">
+                        <div class="message-header">
+                            <span class="message-role" x-text="$store.game.getMessageRole(msg)"></span>
+                            <div class="message-actions">
+                                <button class="msg-action-btn" @click="$store.game.editMessage(index)"
+                                    title="编辑">✏️</button>
+                                <button class="msg-action-btn" @click="$store.game.deleteMessage(index)"
+                                    title="删除">🗑️</button>
+                                <button class="msg-action-btn"
+                                    x-show="index === $store.game.messages.length - 1 && msg.role === 'assistant'"
+                                    @click="$store.game.regenerateMessage()" title="重新生成">🔄</button>
+                            </div>
+                        </div>
+                        <div class="message-content" x-html="$store.game.formatMessage(msg.content)"></div>
+                    </div>
+                </template>
+
+                <!-- 正在生成 -->
+                <div class="message assistant generating" x-show="$store.game.generating">
+                    <div class="message-header">
+                        <span class="message-role">旁白</span>
+                    </div>
+                    <div class="message-content">
+                        <span class="typing-indicator">正在生成<span class="dots">...</span></span>
+                        <div class="generating-preview" x-text="$store.game.generatingContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="input-area">
+            <!-- 录像查看模式 -->
+            <template x-if="$store.game.viewingCamera">
+                <div class="camera-controls" style="display:flex;gap:10px;width:100%;align-items:center;">
+                    <span style="color:var(--accent-red);font-weight:bold;font-size:14px;">📹 录像查看中</span>
+                    <button class="nextday-btn" @click="$store.game.continueCameraFootage()"
+                        :disabled="$store.game.generating" style="flex:1;">
+                        ▶ 继续查看
+                    </button>
+                    <button class="explore-btn" @click="$store.game.stopCameraViewing()"
+                        :disabled="$store.game.generating">
+                        ⏹ 结束录像
+                    </button>
+                </div>
+            </template>
+
+            <!-- 正常操作模式 -->
+            <template x-if="!$store.game.viewingCamera">
+                <div style="display:contents;">
+                    <!-- 探索按钮 -->
+                    <button class="explore-btn" @click="$store.game.explorePanelOpen = !$store.game.explorePanelOpen"
+                        :disabled="$store.game.exploreCount >= 3 || $store.game.generating || $store.game.phase === 'prologue'"
+                        x-show="$store.game.phase !== 'prologue'">
+                        🔎 探索 (<span x-text="3 - $store.game.exploreCount"></span>)
+                    </button>
+
+                    <!-- "第二天"按钮 -->
+                    <button class="nextday-btn" x-show="$store.game.showNextDayBtn()" @click="$store.game.nextDay()"
+                        :disabled="$store.game.generating">
+                        🌅 第二天
+                    </button>
+
+                    <!-- 输入框 -->
+                    <div class="input-row" x-show="$store.game.phase === 'interactive'">
+                        <textarea x-model="$store.game.inputText" placeholder="和女友对话...（Ctrl+Enter 发送）"
+                            :disabled="$store.game.generating" @keydown.ctrl.enter="$store.game.sendMessage()"
+                            rows="2"></textarea>
+                        <button class="send-btn" @click="$store.game.sendMessage()"
+                            :disabled="$store.game.generating || !$store.game.inputText.trim()">
+                            发送
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- 存档管理弹窗 -->
+    <div class="modal-mask" x-show="$store.game.saveManagerOpen" x-transition
+        @click.self="$store.game.saveManagerOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>💾 存档管理</span>
+                <button @click="$store.game.saveManagerOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <template x-for="slot in [1,2,3,4,5]" :key="slot">
+                    <div class="save-slot">
+                        <div class="slot-info">
+                            <div class="slot-name">存档位 <span x-text="slot"></span></div>
+                            <div class="slot-meta" x-text="$store.game.getSaveInfo(slot)"></div>
+                        </div>
+                        <div class="slot-actions">
+                            <button @click="$store.game.saveToSlot(slot)" :disabled="!$store.game.inGame">保存</button>
+                            <button @click="$store.game.loadFromSlot(slot)"
+                                :disabled="!$store.game.hasSave(slot)">读取</button>
+                            <button class="danger" @click="$store.game.deleteSlot(slot)"
+                                :disabled="!$store.game.hasSave(slot)">删除</button>
+                        </div>
+                    </div>
+                </template>
+                <div class="save-note">
+                    💡 存档使用 dzmm.kv 存储，发布后数据持久化
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息编辑弹窗 -->
+    <div class="modal-mask" x-show="$store.game.editModalOpen" x-transition
+        @click.self="$store.game.editModalOpen = false">
+        <div class="modal edit-modal">
+            <div class="modal-header">
+                <span>✏️ 编辑消息</span>
+                <button @click="$store.game.editModalOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea x-model="$store.game.editingContent" rows="12"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button @click="$store.game.editModalOpen = false">取消</button>
+                <button class="primary" @click="$store.game.confirmEdit()">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 探索结果弹窗 -->
+    <div class="modal-mask" x-show="$store.game.exploreResultOpen" x-transition
+        @click.self="$store.game.exploreResultOpen = false">
+        <div class="modal explore-result-modal">
+            <div class="modal-header">
+                <span>🔎 探索结果</span>
+                <button @click="$store.game.exploreResultOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="explore-result-content">
+                    <div class="result-icon" x-text="$store.game.exploreResult?.icon || '📎'"></div>
+                    <div class="result-title" x-text="$store.game.exploreResult?.title || ''"></div>
+                    <div class="result-desc" x-html="$store.game.exploreResult?.description || ''"></div>
+                    <div class="result-clue" x-show="$store.game.exploreResult?.clue">
+                        <span class="clue-badge" :class="$store.game.exploreResult?.clueType || ''">
+                            <span x-text="$store.game.exploreResult?.clueType === 'key' ? '⭐ 关键线索' : '📎 普通线索'"></span>:
+                            <span x-text="$store.game.exploreResult?.clue || ''"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary" @click="$store.game.exploreResultOpen = false">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script defer src="game.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
