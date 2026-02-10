@@ -718,12 +718,11 @@ ${gfName}是一个清纯美丽的校花，深爱着${this.playerName}。她是${
 
 请用第二人称描写玩家探索这个地点并发现该线索的过程。要求：
 - 150-250字左右
-- 细腻的场景描写和心理描写
-- 线索的发现要有悬疑感、不安感
+- 细腻的场景描写和线索描写
 - 暗示NTR相关的细节（精液痕迹、避孕套、异常气味等视情况而定）
-- 不要直接揭露全部真相，保留悬念
+- 不要揭露真相，保留悬念
 - 用中文写作
-- 本次回复${this.replyMinChars}-${this.replyMaxChars}字`;
+- 本次回复150-250字`;
 
                 let aiDesc = '';
                 await window.dzmm.completions(
@@ -1235,10 +1234,85 @@ ${this.getBullyName()}用的不是普通的催眠术——他在${this.getGirlfr
                     canRelease: this.canRelease,
                     canSynthesize: this.canSynthesize,
                     locations: JSON.parse(JSON.stringify(this.locations)),
-                    clueCount: this.discoveredClues.length
+                    clueCount: this.discoveredClues.length,
+                    replyMinChars: this.replyMinChars,
+                    replyMaxChars: this.replyMaxChars,
+                    selectedModel: this.selectedModel
                 };
-                localStorage.setItem('ntr_detective_autosave', JSON.stringify(autoSaveData));
+                const dataStr = JSON.stringify(autoSaveData);
+                localStorage.setItem('ntr_detective_autosave', dataStr);
+
+                // 同步到dzmm.kv
+                try {
+                    window.dzmm.kv.put('ntr_detective_autosave', dataStr);
+                } catch (e) { }
             } catch (e) { }
+        },
+
+        hasAutoSave() {
+            return localStorage.getItem('ntr_detective_autosave') !== null;
+        },
+
+        getAutoSaveInfo() {
+            const data = localStorage.getItem('ntr_detective_autosave');
+            if (!data) return '（无自动存档）';
+            try {
+                const save = JSON.parse(data);
+                const date = new Date(save.timestamp).toLocaleString();
+                return `${save.playerName} · 第${save.currentDay}天 · 线索${save.clueCount || 0}个 · ${date}`;
+            } catch {
+                return '（数据损坏）';
+            }
+        },
+
+        async loadAutoSave() {
+            try {
+                let data = localStorage.getItem('ntr_detective_autosave');
+                if (!data) {
+                    try {
+                        const kvData = await window.dzmm.kv.get('ntr_detective_autosave');
+                        if (kvData && kvData.value) {
+                            data = typeof kvData.value === 'string' ? kvData.value : JSON.stringify(kvData.value);
+                        }
+                    } catch (e) { }
+                }
+                if (!data) { alert('自动存档为空！'); return; }
+
+                const save = JSON.parse(data);
+                this.playerName = save.playerName || '';
+                this.girlfriendName = save.girlfriendName || '玥姗';
+                this.bullyName = save.bullyName || '小黄';
+                this.currentDay = save.currentDay || 1;
+                this.phase = save.phase || 'interactive';
+                this.exploreCount = save.exploreCount || 0;
+                this.messages = save.messages || [];
+                this.normalStatus = save.normalStatus || this.normalStatus;
+                this.hiddenStatus = save.hiddenStatus || this.hiddenStatus;
+                this.discoveredClues = save.discoveredClues || [];
+                this.watchGifted = save.watchGifted || false;
+                this.cameraInstalled = save.cameraInstalled || false;
+                this.canRelease = save.canRelease || false;
+                this.canSynthesize = save.canSynthesize || false;
+                if (save.locations) this.locations = save.locations;
+                if (save.replyMinChars) this.replyMinChars = save.replyMinChars;
+                if (save.replyMaxChars) this.replyMaxChars = save.replyMaxChars;
+                if (save.selectedModel) this.selectedModel = save.selectedModel;
+
+                this.started = true;
+                this.inGame = true;
+                this.saveManagerOpen = false;
+                alert('自动存档读取成功！');
+            } catch (e) {
+                this.logError('自动存档读取失败: ' + e.message);
+                alert('自动存档读取失败: ' + e.message);
+            }
+        },
+
+        deleteAutoSave() {
+            if (confirm('确定要删除自动存档吗？')) {
+                localStorage.removeItem('ntr_detective_autosave');
+                try { window.dzmm.kv.delete('ntr_detective_autosave'); } catch (e) { }
+            }
         },
 
         async tryRestoreFromKV() {

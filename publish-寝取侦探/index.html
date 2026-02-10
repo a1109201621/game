@@ -46,13 +46,13 @@
                 </div>
                 <div class="form-group">
                     <label>回复字数下限: <span x-text="$store.game.replyMinChars"></span> 字</label>
-                    <input type="range" min="200" max="2000" step="50" x-model.number="$store.game.replyMinChars"
+                    <input type="range" min="200" max="1400" step="50" x-model.number="$store.game.replyMinChars"
                         @input="if($store.game.replyMinChars > $store.game.replyMaxChars) $store.game.replyMaxChars = $store.game.replyMinChars"
                         style="width:100%;accent-color:var(--accent-pink);">
                 </div>
                 <div class="form-group">
                     <label>回复字数上限: <span x-text="$store.game.replyMaxChars"></span> 字</label>
-                    <input type="range" min="200" max="2000" step="50" x-model.number="$store.game.replyMaxChars"
+                    <input type="range" min="200" max="1400" step="50" x-model.number="$store.game.replyMaxChars"
                         @input="if($store.game.replyMaxChars < $store.game.replyMinChars) $store.game.replyMinChars = $store.game.replyMaxChars"
                         style="width:100%;accent-color:var(--accent-pink);">
                 </div>
@@ -372,6 +372,19 @@
                 <button @click="$store.game.saveManagerOpen = false">✕</button>
             </div>
             <div class="modal-body">
+                <!-- 自动存档栏位 -->
+                <div class="save-slot" style="border-color:var(--accent-pink);">
+                    <div class="slot-info">
+                        <div class="slot-name" style="color:var(--accent-pink);">🔄 自动存档</div>
+                        <div class="slot-meta" x-text="$store.game.getAutoSaveInfo()"></div>
+                    </div>
+                    <div class="slot-actions">
+                        <button @click="$store.game.loadAutoSave()" :disabled="!$store.game.hasAutoSave()">读取</button>
+                        <button class="danger" @click="$store.game.deleteAutoSave()"
+                            :disabled="!$store.game.hasAutoSave()">删除</button>
+                    </div>
+                </div>
+                <!-- 手动存档栏位 -->
                 <template x-for="slot in [1,2,3,4,5]" :key="slot">
                     <div class="save-slot">
                         <div class="slot-info">
