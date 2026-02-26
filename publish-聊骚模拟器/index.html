@@ -152,28 +152,11 @@
             <div class="form-section">
                 <label>🤖 AI模型</label>
                 <select x-model="$store.chat.model">
-                    <template x-for="m in $store.chat.modelList" :key="m">
-                        <option :value="m" x-text="m"></option>
+                    <template x-for="m in $store.chat.modelList" :key="m.value">
+                        <option :value="m.value" x-text="m.label"></option>
                     </template>
-                    <option :value="m" x-text="m" value="nalang-xl-0826">nalang-xl-0826</option>
-                    <option :value="m" x-text="m" value="nalang-xl-0826-10k">nalang-xl-0826-10k</option>
-                    <option :value="m" x-text="m" value="nalang-xl-0826-16k">nalang-xl-0826-16k</option>
-                    <option :value="m" x-text="m" value="nalang-medium-0826">nalang-medium-0826</option>
-                    <option :value="m" x-text="m" value="nalang-medium-0826-10k">nalang-medium-0826-10k</option>
-                    <option :value="m" x-text="m" value="nalang-medium-0826-16k">nalang-medium-0826-16k</option>
-                    <option :value="m" x-text="m" value="nalang-max-0826">nalang-max-0826</option>
-                    <option :value="m" x-text="m" value="nalang-max-0826-10k">nalang-max-0826-10k</option>
-                    <option :value="m" x-text="m" value="nalang-max-0826-16k">nalang-max-0826-16k</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-0826">nalang-turbo-0826</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-0826-10k">nalang-turbo-0826-10k</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-0826-16k">nalang-turbo-0826-16k</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-1115">nalang-turbo-1115</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-1115-10k">nalang-turbo-1115-10k</option>
-                    <option :value="m" x-text="m" value="nalang-turbo-1115-16k">nalang-turbo-1115-16k</option>
                 </select>
             </div>
-
-
 
             <!-- 角色预设选择（二级菜单） -->
             <div class="form-section">
@@ -182,12 +165,6 @@
                     <template x-for="(preset, index) in $store.chat.getCurrentPresetList()" :key="index">
                         <option :value="index" x-text="preset.label"></option>
                     </template>
-                    <option :value="index" x-text="preset.label" value="0">🎀 林晓雪 - 拜金大学生</option>
-                    <option :value="index" x-text="preset.label" value="1">🌸 苏婉儿 - 温柔御姐</option>
-                    <option :value="index" x-text="preset.label" value="2">⚡ 周小萌 - 元气少女</option>
-                    <option :value="index" x-text="preset.label" value="3">📚 陈诗琪 - 高冷学霸</option>
-                    <option :value="index" x-text="preset.label" value="4">🎭 赵心怡 - 绿茶心机</option>
-                    <option :value="index" x-text="preset.label" value="5">✏️ 自定义女性角色</option>
                 </select>
             </div>
 
@@ -212,42 +189,9 @@
             </div>
 
             <!-- 基本信息 -->
-            <div class="form-row">
-                <div class="form-section half">
-                    <label>姓名</label>
-                    <input x-model="$store.chat.charName" placeholder="输入姓名">
-                </div>
-                <div class="form-section half">
-                    <label>年龄</label>
-                    <select x-model="$store.chat.charAge">
-                        <template x-for="i in 23">
-                            <option :value="i + 17" x-text="(i + 17) + '岁'"></option>
-                        </template>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="18">18岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="19">19岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="20">20岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="21">21岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="22">22岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="23">23岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="24">24岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="25">25岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="26">26岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="27">27岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="28">28岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="29">29岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="30">30岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="31">31岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="32">32岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="33">33岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="34">34岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="35">35岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="36">36岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="37">37岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="38">38岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="39">39岁</option>
-                        <option :value="i + 17" x-text="(i + 17) + '岁'" value="40">40岁</option>
-                    </select>
-                </div>
+            <div class="form-section">
+                <label>姓名</label>
+                <input x-model="$store.chat.charName" placeholder="输入姓名">
             </div>
 
             <!-- 性格特点 -->
@@ -308,7 +252,6 @@
                     <span class="money-icon">💰</span>
                     <span class="money-value" x-text="'$' + $store.chat.money">$10000</span>
                 </div>
-                <button class="add-money-btn" @click="$store.chat.addMoney(10000)">+</button>
                 <button class="model-toggle" @click="$store.chat.showModelSelect = !$store.chat.showModelSelect">
                     ⚙️
                 </button>
@@ -319,25 +262,13 @@
         <div x-show="$store.chat.showModelSelect" class="model-dropdown"
             @click.outside="$store.chat.showModelSelect = false" style="display: none;">
             <select x-model="$store.chat.model" @change="$store.chat.showModelSelect = false">
-                <template x-for="m in $store.chat.modelList" :key="m">
-                    <option :value="m" x-text="m"></option>
+                <template x-for="m in $store.chat.modelList" :key="m.value">
+                    <option :value="m.value" x-text="m.label"></option>
                 </template>
-                <option :value="m" x-text="m" value="nalang-xl-0826">nalang-xl-0826</option>
-                <option :value="m" x-text="m" value="nalang-xl-0826-10k">nalang-xl-0826-10k</option>
-                <option :value="m" x-text="m" value="nalang-xl-0826-16k">nalang-xl-0826-16k</option>
-                <option :value="m" x-text="m" value="nalang-medium-0826">nalang-medium-0826</option>
-                <option :value="m" x-text="m" value="nalang-medium-0826-10k">nalang-medium-0826-10k</option>
-                <option :value="m" x-text="m" value="nalang-medium-0826-16k">nalang-medium-0826-16k</option>
-                <option :value="m" x-text="m" value="nalang-max-0826">nalang-max-0826</option>
-                <option :value="m" x-text="m" value="nalang-max-0826-10k">nalang-max-0826-10k</option>
-                <option :value="m" x-text="m" value="nalang-max-0826-16k">nalang-max-0826-16k</option>
-                <option :value="m" x-text="m" value="nalang-turbo-0826">nalang-turbo-0826</option>
-                <option :value="m" x-text="m" value="nalang-turbo-0826-10k">nalang-turbo-0826-10k</option>
-                <option :value="m" x-text="m" value="nalang-turbo-0826-16k">nalang-turbo-0826-16k</option>
-                <option :value="m" x-text="m" value="nalang-turbo-1115">nalang-turbo-1115</option>
-                <option :value="m" x-text="m" value="nalang-turbo-1115-10k">nalang-turbo-1115-10k</option>
-                <option :value="m" x-text="m" value="nalang-turbo-1115-16k">nalang-turbo-1115-16k</option>
             </select>
+            <button class="add-money-btn" @click="$store.chat.addMoney(10000)" style="width:100%; margin-top:8px;">
+                💰 充值 10000
+            </button>
         </div>
 
         <!-- 消息区域 -->

@@ -57,6 +57,9 @@ await dzmm.completions({
 | `nalang-medium-0826` | 平衡性能（32K 上下文） |
 | `nalang-max-0826` | 高质量（32K 上下文） |
 | `nalang-xl-0826` | 最强模型（32K 上下文） |
+| `x-apex-0212` | 文笔精致，角色刻画深入 （32K 上下文）|
+| `x-apex-neo` | 叙事细腻，感官描写丰富 （32K 上下文）|
+| `x-apex-flux-0217` | 节奏明快，场景描写生动 （32K 上下文）|
 
 ### 2. AI 画图 API
 

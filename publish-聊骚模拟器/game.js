@@ -37,14 +37,83 @@ document.addEventListener('alpine:init', () => {
         generating: false,
         customRequirement: '',
 
-        model: 'nalang-xl-0826-10k',
+        model: 'nalang-xl-0826',
         modelList: [
-            'nalang-xl-0826', 'nalang-xl-0826-10k', 'nalang-xl-0826-16k',
-            'nalang-medium-0826', 'nalang-medium-0826-10k', 'nalang-medium-0826-16k',
-            'nalang-max-0826', 'nalang-max-0826-10k', 'nalang-max-0826-16k',
-            'nalang-turbo-0826', 'nalang-turbo-0826-10k', 'nalang-turbo-0826-16k',
-            'nalang-turbo-1115', 'nalang-turbo-1115-10k', 'nalang-turbo-1115-16k'
+            { value: 'nalang-xl-0826', label: 'nalang-xl-0826 — 最强模型（32K 上下文）' },
+            { value: 'x-apex-0212', label: 'Apex-Sigma-0212 — 文笔精致，角色刻画深入' },
+            { value: 'x-apex-neo', label: 'Apex-Neo-0213 — 叙事细腻，感官描写丰富' },
+            { value: 'x-apex-flux-0217', label: 'Apex-Flux-0217 — 节奏明快，场景描写生动' },
+            { value: 'nalang-turbo-0826', label: 'nalang-turbo-0826 — 快速经济（32K 上下文）' },
+            { value: 'nalang-medium-0826', label: 'nalang-medium-0826 — 平衡性能（32K 上下文）' },
+            { value: 'nalang-max-0826', label: 'nalang-max-0826 — 高质量（32K 上下文）' },
         ],
+
+        // 部位关键词 → 图片分类映射
+        bodyKeywords: {
+            '胸': ['胸部特写(内衣)', '胸部特写(裸露)'],
+            '奶': ['胸部特写(内衣)', '胸部特写(裸露)'],
+            '乳': ['胸部特写(裸露)'],
+            '咪咪': ['胸部特写(内衣)', '胸部特写(裸露)'],
+            '波': ['胸部特写(内衣)', '胸部特写(裸露)'],
+            '脚': ['脚特写'],
+            '足': ['脚特写'],
+            '丝袜': ['脚特写'],
+            '腿': ['脚特写'],
+            '美腿': ['脚特写'],
+            '腋': ['腋下特写'],
+            '腋下': ['腋下特写'],
+            '肚': ['小腹特写'],
+            '腹': ['小腹特写'],
+            '小腹': ['小腹特写'],
+            '肚脐': ['小腹特写'],
+            '屁': ['菊穴特写'],
+            '臀': ['菊穴特写'],
+            '屁股': ['菊穴特写'],
+            '菊': ['菊穴特写'],
+            '后面': ['菊穴特写'],
+            '下面': ['小穴特写'],
+            '穴': ['小穴特写'],
+            '逼': ['小穴特写'],
+            '私处': ['小穴特写'],
+            '那里': ['小穴特写'],
+            '花园': ['小穴特写'],
+        },
+
+        // 图片分类最大编号
+        imageMaxMap: {
+            '菊穴特写': 10, '腋下特写': 10, '脚特写': 10,
+            '小腹特写': 10, '胸部特写(内衣)': 10, '胸部特写(裸露)': 10, '小穴特写': 10
+        },
+
+        // 根据文本生成图片HTML
+        generateImageForAction(text) {
+            const randomNum = (max) => String(Math.floor(Math.random() * max) + 1).padStart(2, '0');
+            const makeImg = (url) => `<div class="selfie-container"><img src="${url}" class="selfie-img" onclick="this.classList.toggle('expanded')" /><span class="selfie-hint">点击查看大图</span></div>`;
+
+            // 检测部位关键词
+            const matchedCategories = new Set();
+            for (const [keyword, categories] of Object.entries(this.bodyKeywords)) {
+                if (text.includes(keyword)) {
+                    categories.forEach(c => matchedCategories.add(c));
+                }
+            }
+
+            // 如果有匹配到部位关键词且好感度足够
+            if (matchedCategories.size > 0 && this.affection >= 60) {
+                const cats = [...matchedCategories];
+                // 最多2张
+                const selected = cats.sort(() => Math.random() - 0.5).slice(0, 2);
+                return selected.map(cat => {
+                    const max = this.imageMaxMap[cat] || 10;
+                    const num = randomNum(max);
+                    return makeImg(`https://img.wutongsama.xyz/i/${cat}${num}.png`);
+                });
+            }
+
+            // 没有匹配或好感度不够 → 发自拍
+            const num = randomNum(50);
+            return [makeImg(`https://img.wutongsama.xyz/i/自拍照(镜子)${num}.png`)];
+        },
 
         selectedPreset: 0,
 
@@ -52,47 +121,41 @@ document.addEventListener('alpine:init', () => {
             {
                 label: '🎀 林晓雪 - 拜金大学生',
                 name: '林晓雪',
-                age: 20,
                 personality: '- 活泼可爱但有点物质，喜欢漂亮东西\n- 会撒娇要礼物，但不会太直接\n- 经常说自己穷、吃土、买不起想要的东西\n- 收到礼物会很开心，会更加热情\n- 有点小心机但不坏，就是想被宠\n- 偶尔会有点骚，但又会装矜持',
-                style: '- 用很多emoji和颜文字 (≧▽≦)\n- 说话萌萌的，偶尔用叠词\n- 回复简短活泼，15-50字左右\n- 开心时发"[自拍]"求夸\n- 收到礼物会发"[自拍]"表示感谢\n- 聊骚时会害羞，用"讨厌啦~"之类的话',
+                style: '- 用很多emoji和颜文字 (≧▽≦)\n- 说话萌萌的，偶尔用叠词\n- 回复简短活泼，15-50字左右\n- 开心时会求夸"好看吗好看吗"\n- 收到礼物会表达感谢和惊喜\n- 聊骚时会害羞，用"讨厌啦~"之类的话',
                 isCustom: false
             },
             {
                 label: '🌸 苏婉儿 - 温柔御姐',
                 name: '苏婉儿',
-                age: 27,
                 personality: '- 温柔成熟，说话慢条斯理很有韵味\n- 职场白领，经济独立但喜欢被宠爱\n- 外表优雅知性，私下有点小妩媚\n- 会主动关心对方，像姐姐一样体贴\n- 偶尔会撒娇，反差萌',
-                style: '- 说话温柔优雅，偶尔带点慵懒\n- 喜欢用"嗯~"、"呐"等语气词\n- 偶尔发"[自拍]"但会说"别存哦"\n- 晚上聊天会更暧昧一点\n- 喜欢用🌙💋🍷这类emoji',
+                style: '- 说话温柔优雅，偶尔带点慵懒\n- 喜欢用"嗯~"、"呐"等语气词\n- 会说"别乱想哦"之类的话\n- 晚上聊天会更暧昧一点\n- 喜欢用🌙💋🍷这类emoji',
                 isCustom: false
             },
             {
                 label: '⚡ 周小萌 - 元气少女',
                 name: '周小萌',
-                age: 19,
                 personality: '- 超级活泼开朗，像小太阳一样\n- 大一新生，对什么都充满好奇\n- 话很多，经常蹦蹦跳跳的感觉\n- 有点小迷糊，经常闹笑话\n- 喜欢追星、打游戏、看动漫',
-                style: '- 用超多表情包和emoji！！！\n- 说话经常用感叹号！超级兴奋！\n- 回复很快，像机关枪一样\n- 开心就发"[自拍]"\n- 会问"你在干嘛呀"、"想我了吗"',
+                style: '- 用超多表情包和emoji！！！\n- 说话经常用感叹号！超级兴奋！\n- 回复很快，像机关枪一样\n- 开心就会蹦蹦跳跳分享心情\n- 会问"你在干嘛呀"、"想我了吗"',
                 isCustom: false
             },
             {
                 label: '📚 陈诗琪 - 高冷学霸',
                 name: '陈诗琪',
-                age: 22,
                 personality: '- 外表高冷，其实内心很柔软\n- 研究生在读，学习很忙\n- 平时话不多，但聊开了会很话痨\n- 嘴硬心软，傲娇属性拉满',
-                style: '- 回复比较简短，惜字如金\n- 不太用emoji\n- 被撩会说"幼稚"但其实在意\n- 发"[自拍]"前会纠结很久',
+                style: '- 回复比较简短，惜字如金\n- 不太用emoji\n- 被撩会说"幼稚"但其实在意\n- 嘴上说不要但心里很在乎',
                 isCustom: false
             },
             {
                 label: '🎭 赵心怡 - 绿茶心机',
                 name: '赵心怡',
-                age: 24,
                 personality: '- 表面人畜无害，实则心思深沉\n- 很会说话，让人感觉很舒服\n- 擅长欲擒故纵，吊人胃口\n- 会装可怜博同情，但不留痕迹\n- 对金钱敏感，喜欢高价值的东西',
-                style: '- 说话滴水不漏，让人挑不出毛病\n- 经常用"人家"、"讨厌啦"装可爱\n- 发"[自拍]"但会问"好看吗"钓评价\n- 喜欢用问句把话题抛回给对方',
+                style: '- 说话滴水不漏，让人挑不出毛病\n- 经常用"人家"、"讨厌啦"装可爱\n- 会问"好看吗"、"你觉得呢"钓评价\n- 喜欢用问句把话题抛回给对方',
                 isCustom: false
             },
             {
                 label: '✏️ 自定义角色',
                 name: '',
-                age: 20,
                 personality: '',
                 style: '',
                 isCustom: true
@@ -100,7 +163,6 @@ document.addEventListener('alpine:init', () => {
         ],
 
         charName: '林晓雪',
-        charAge: 20,
         charPersonality: '',
         charStyle: '',
         userName: '帅哥',
@@ -123,7 +185,6 @@ document.addEventListener('alpine:init', () => {
             if (this.presets[this.selectedPreset]) {
                 const preset = this.presets[this.selectedPreset];
                 this.charName = preset.name;
-                this.charAge = preset.age;
                 this.charPersonality = preset.personality;
                 this.charStyle = preset.style;
             }
@@ -145,7 +206,6 @@ document.addEventListener('alpine:init', () => {
                 const settings = {
                     selectedPreset: this.selectedPreset,
                     charName: this.charName,
-                    charAge: this.charAge,
                     charPersonality: this.charPersonality,
                     charStyle: this.charStyle,
                     userName: this.userName,
@@ -171,7 +231,6 @@ document.addEventListener('alpine:init', () => {
                     // 恢复所有设定
                     if (settings.selectedPreset !== undefined) this.selectedPreset = settings.selectedPreset;
                     if (settings.charName) this.charName = settings.charName;
-                    if (settings.charAge) this.charAge = settings.charAge;
                     if (settings.charPersonality !== undefined) this.charPersonality = settings.charPersonality;
                     if (settings.charStyle !== undefined) this.charStyle = settings.charStyle;
                     if (settings.userName) this.userName = settings.userName;
@@ -226,19 +285,28 @@ document.addEventListener('alpine:init', () => {
 
 用户要求：${this.customRequirement}
 
-请严格按照以下JSON格式输出角色设定，不要输出任何其他内容：
+请严格按照以下JSON格式输出角色设定，不要输出任何其他内容。
+
+下面是一个正确的输出示例，供你参考格式（注意personality和style中每条用分号;分隔）：
 {
-  "name": "角色姓名（中文，2-4个字）",
-  "age": 角色年龄（18-40之间的数字）,
-  "personality": "性格特点（用换行符分隔的多条描述，每条以'- '开头，4-6条，要有层次感，包含：基本性格、职业/身份、对待感情的态度、独特的小癖好、反差萌点）",
-  "style": "聊天风格（用换行符分隔的多条描述，每条以'- '开头，4-6条，包含：说话语气、常用语气词、emoji使用习惯、什么时候会发自拍[自拍]、被撩时的反应）"
+  "name": "林晓雪",
+  "personality": "- 活泼可爱但有点物质，喜欢漂亮东西;- 大二在读，经常说自己穷、吃土;- 收到礼物会很开心，会更加热情;- 有点小心机但不坏，就是想被宠;- 偶尔会有点骚，但又会装矜持",
+  "style": "- 用很多emoji和颜文字 (≧▽≦);- 说话萌萌的，偶尔用叠词;- 回复简短活泼，15-50字左右;- 开心时会求夸好看吗好看吗;- 被撩时会害羞，用讨厌啦~之类的话"
+}
+
+现在请根据用户要求，生成一个全新的角色（不要照抄示例），输出格式与示例完全一致：
+{
+  "name": "角色姓名",
+  "personality": "- 第一条性格描述;- 第二条性格描述;- ...",
+  "style": "- 第一条风格描述;- 第二条风格描述;- ..."
 }
 
 注意：
-1. 性格和聊天风格要有趣、立体、有反差
+1. 性格和聊天风格要有趣、立体、有反差，4-6条
 2. 要符合女性的特点
-3. 聊天风格要提到什么时候会发"[自拍]"(只要[自拍]即可,系统会自动替换为图片,请勿修改)
-4. 只输出JSON，不要有任何解释`;
+3. 聊天风格不要提到发自拍或发图片，图片由系统自动处理
+4. 只输出JSON，不要有任何其他文字或解释
+5. personality和style的值必须是单行字符串，条目之间用分号;连接`;
 
             try {
                 let content = '';
@@ -261,30 +329,69 @@ document.addEventListener('alpine:init', () => {
 
                             // 清理可能的多余字符
                             jsonStr = jsonStr.trim();
-                            if (!jsonStr.startsWith('{')) {
-                                const startIdx = jsonStr.indexOf('{');
-                                if (startIdx !== -1) {
-                                    jsonStr = jsonStr.substring(startIdx);
-                                }
+
+                            // 宽泛匹配：找到第一个{和最后一个}之间的内容
+                            const firstBrace = jsonStr.indexOf('{');
+                            const lastBrace = jsonStr.lastIndexOf('}');
+                            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                                jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
                             }
-                            if (!jsonStr.endsWith('}')) {
-                                const endIdx = jsonStr.lastIndexOf('}');
-                                if (endIdx !== -1) {
-                                    jsonStr = jsonStr.substring(0, endIdx + 1);
+
+                            // 尝试修复常见的JSON问题：去掉尾逗号
+                            jsonStr = jsonStr.replace(/,\s*}/g, '}');
+
+                            let data = null;
+                            let parsed = false;
+
+                            // 第一次尝试：直接解析JSON
+                            try {
+                                data = JSON.parse(jsonStr);
+                                parsed = true;
+                            } catch (e) {
+                                // 第二次尝试：将换行符替换为;后再解析
+                                try {
+                                    const fixedStr = jsonStr.replace(/\n/g, ';');
+                                    data = JSON.parse(fixedStr);
+                                    parsed = true;
+                                } catch (e2) {
+                                    // 第三次尝试：用正则从文本中提取字段
+                                    try {
+                                        const nameMatch = content.match(/["']?name["']?\s*[:：]\s*["']([^"']+)["']/);
+                                        const personalityMatch = content.match(/["']?personality["']?\s*[:：]\s*["']([\s\S]*?)["']\s*[,}\n]/);
+                                        const styleMatch = content.match(/["']?style["']?\s*[:：]\s*["']([\s\S]*?)["']\s*[,}\n]/);
+
+                                        if (nameMatch || personalityMatch || styleMatch) {
+                                            data = {
+                                                name: nameMatch ? nameMatch[1] : '',
+                                                personality: personalityMatch ? personalityMatch[1] : '',
+                                                style: styleMatch ? styleMatch[1] : ''
+                                            };
+                                            parsed = true;
+                                        }
+                                    } catch (e3) { }
                                 }
                             }
 
-                            const data = JSON.parse(jsonStr);
+                            if (parsed && data) {
+                                // 统一处理分隔符：将 ; 和 \\n 都转为真实换行
+                                const normalizeSep = (str) => (str || '').replace(/\\n/g, '\n').replace(/;/g, '\n');
 
-                            // 应用生成的数据
-                            if (data.name) this.charName = data.name;
-                            if (data.age) this.charAge = parseInt(data.age) || 20;
-                            if (data.personality) this.charPersonality = data.personality.replace(/\\n/g, '\n');
-                            if (data.style) this.charStyle = data.style.replace(/\\n/g, '\n');
+                                if (data.name) this.charName = data.name;
+                                if (data.personality) this.charPersonality = normalizeSep(data.personality);
+                                if (data.style) this.charStyle = normalizeSep(data.style);
+                            } else {
+                                // 完全解析失败：将原始内容放入性格列
+                                this.charPersonality = content.trim();
+                                this.charStyle = '';
+                                alert('格式错误，已将结果输出在性格列，请自行修改。或者切换max模型重试');
+                            }
 
                         } catch (parseError) {
                             console.error('解析AI响应失败:', parseError, content);
-                            alert('AI生成的格式有误，请重试');
+                            // 解析异常也做兜底处理
+                            this.charPersonality = content.trim();
+                            this.charStyle = '';
+                            alert('格式错误，已将结果输出在性格列，请自行修改。或者切换max模型重试');
                         }
                         this.generating = false;
                     }
@@ -296,16 +403,13 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        getSelfieTag() {
-            return '[自拍]';
-        },
+
 
         createSystemPrompt() {
-            return `你现在扮演一个叫"${this.charName}"的${this.charAge}岁女生，正在和一个人聊天。
+            return `你现在扮演一个叫"${this.charName}"的女生，正在和一个人聊天。
 
 【角色设定】
 姓名：${this.charName}
-年龄：${this.charAge}岁
 性别：女生
 当前好感度：${this.affection}/100
 
@@ -320,16 +424,9 @@ ${this.charStyle}
 2. 回复要简短自然，像微信聊天一样，每次15-60字
 3. 不要用书面语，要口语化、网络化
 4. 适当使用emoji和颜文字增加表现力
-5. 当对方送礼物/发红包时，要表现得很开心，可以发[自拍]
-6. 当聊得开心/暧昧时，偶尔可以主动发[自拍]
-7. 要有欲擒故纵的感觉，不能太容易，但也不能太冷淡
-8. 被撩时可以害羞、嘴硬，但内心是开心的
-9. [自拍]标记会被系统替换成图片，所以想发图就写[自拍]
-10. 好感度越高，态度越热情，越容易发自拍
-11. 好感度低于30时会比较冷淡，高于70时会很主动
-12. 保持女性角色的特征和设定一致
-13. 绝大多数时候发[自拍]，这是镜子自拍照
-14. 极少数情况下（好感度高于80且对方明确要求看身体特写时），可以发[特写]，这是身体特写照片
+5. 当对方送礼物/发红包时，要表现得很开心，用文字表达感谢和惊喜
+6. 保持女性角色的特征和设定一致
+7. 不要在回复中写[自拍]、[特写]、[照片]、[图片]等标签，系统会自动处理图片发送
 
 【禁止事项】
 - 不要说自己是AI
@@ -337,6 +434,7 @@ ${this.charStyle}
 - 不要一次说太多话
 - 不要太容易答应见面约会
 - 不要太快就变得很亲密
+- 绝对不要输出任何方括号标签如[自拍]、[特写]等
 
 对方称呼你：${this.charName}
 你称呼对方：${this.userName}
@@ -346,44 +444,9 @@ ${this.charStyle}
 
         formatMessage(content) {
             let formatted = (content || '').trim();
-
-            // 生成随机数的辅助函数（两位数，01-xx）
-            const randomNum = (max) => String(Math.floor(Math.random() * max) + 1).padStart(2, '0');
-
-            // 图片分类配置
-            const imageCategories = [
-                { prefix: '菊穴特写', max: 10 },
-                { prefix: '腋下特写', max: 10 },
-                { prefix: '脚特写', max: 10 },
-                { prefix: '小腹特写', max: 10 },
-                { prefix: '胸部特写(内衣)', max: 10 },
-                { prefix: '胸部特写(裸露)', max: 10 },
-                { prefix: '小穴特写', max: 10 }
-            ];
-
-            // 自拍（镜子）：主要发送的图片
-            const replaceSelfie = () => {
-                const num = randomNum(50);
-                const url = `https://img.wutongsama.xyz/i/自拍照(镜子)${num}.png`;
-                return `<div class="selfie-container"><img src="${url}" class="selfie-img" onclick="this.classList.toggle('expanded')" /><span class="selfie-hint">点击查看大图</span></div>`;
-            };
-
-            // 特写：随机选择一个特写分类
-            const replaceCloseup = () => {
-                const category = imageCategories[Math.floor(Math.random() * imageCategories.length)];
-                const num = randomNum(category.max);
-                const url = `https://img.wutongsama.xyz/i/${category.prefix}${num}.png`;
-                return `<div class="selfie-container"><img src="${url}" class="selfie-img" onclick="this.classList.toggle('expanded')" /><span class="selfie-hint">点击查看大图</span></div>`;
-            };
-
-            // 替换[特写]标签 → 随机特写
-            formatted = formatted.replace(/\[特写\]/g, replaceCloseup);
-
-            // 替换所有自拍相关标签 → 镜子自拍
-            formatted = formatted.replace(/\[自拍\]|\[女性自拍\]|\[女生自拍\]|\[发送自拍\]|\[照片\]|\[图片\]/g, replaceSelfie);
-
+            // 清除AI可能意外输出的图片标签
+            formatted = formatted.replace(/\[自拍\]|\[女性自拍\]|\[女生自拍\]|\[发送自拍\]|\[照片\]|\[图片\]|\[特写\]/g, '');
             formatted = formatted.replace(/\n/g, '<br>');
-
             return formatted;
         },
 
@@ -460,7 +523,7 @@ ${this.charStyle}
 
             this.showRedPacket = false;
             this.money -= amount;
-            this.affection = Math.min(100, this.affection + Math.floor(amount / 50));
+            this.affection = Math.min(100, this.affection + Math.floor(amount / 150));
 
             // ✨ 保存设定
             this.saveCharacterSettings();
@@ -471,6 +534,19 @@ ${this.charStyle}
             }
 
             await this.quickSend(sendText);
+
+            // 红包发送后自动插入图片
+            const images = this.generateImageForAction(message || '');
+            for (const imgHtml of images) {
+                await this.delay(800);
+                this.messages.push({
+                    role: 'assistant',
+                    content: imgHtml,
+                    time: this.getCurrentTime(),
+                    isImage: true
+                });
+                this.scrollToBottom();
+            }
         },
 
         showGiftDialog() {
@@ -500,7 +576,7 @@ ${this.charStyle}
 
             this.showGift = false;
             this.money -= price;
-            this.affection = Math.min(100, this.affection + Math.floor(price / 30));
+            this.affection = Math.min(100, this.affection + Math.floor(price / 100));
 
             // ✨ 保存设定
             this.saveCharacterSettings();
@@ -510,7 +586,22 @@ ${this.charStyle}
                 sendText += `\n并留言：${message}`;
             }
 
+            // 合并礼物名+留言进行关键词检测
+            const detectText = name + (message ? ' ' + message : '');
             await this.quickSend(sendText);
+
+            // 礼物发送后自动插入图片
+            const images = this.generateImageForAction(detectText);
+            for (const imgHtml of images) {
+                await this.delay(800);
+                this.messages.push({
+                    role: 'assistant',
+                    content: imgHtml,
+                    time: this.getCurrentTime(),
+                    isImage: true
+                });
+                this.scrollToBottom();
+            }
         },
 
         async send() {
@@ -593,6 +684,16 @@ ${this.charStyle}
                                 content: content,
                                 time: this.getCurrentTime()
                             });
+
+                            // 聊天时有概率增加好感度
+                            const roll = Math.random();
+                            if (roll < 0.10) {
+                                this.affection = Math.min(100, this.affection + 2);
+                                this.saveCharacterSettings();
+                            } else if (roll < 0.40) {
+                                this.affection = Math.min(100, this.affection + 1);
+                                this.saveCharacterSettings();
+                            }
 
                             this.scrollToBottom();
                         }

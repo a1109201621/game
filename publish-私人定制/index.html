@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🎭 私人定制</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="game.js"></script>
+</head>
+
+<body x-data="">
+
+    <!-- ===== Debug 悬浮按钮 ===== -->
+    <button x-show="$store.game.showDebugButton" class="debug-toggle" @click="$store.game.toggleDebug()"
+        title="Debug（可拖动）" style="touch-action:none;">🐛</button>
+
+    <!-- ===== Debug 面板 ===== -->
+    <div x-show="$store.game.showDebug" class="debug-panel" style="display:none;">
+        <div class="debug-header">
+            <h3>🐛 Debug 面板</h3>
+            <button @click="$store.game.showDebug = false">✕</button>
+        </div>
+        <div class="debug-tabs">
+            <button :class="$store.game.debugTab === 'all' && 'active'"
+                @click="$store.game.debugTab = 'all'">全部</button>
+            <button :class="$store.game.debugTab === 'prompt' && 'active'"
+                @click="$store.game.debugTab = 'prompt'">提示词</button>
+            <button :class="$store.game.debugTab === 'response' && 'active'"
+                @click="$store.game.debugTab = 'response'">响应</button>
+            <button :class="$store.game.debugTab === 'error' && 'active'"
+                @click="$store.game.debugTab = 'error'">错误</button>
+        </div>
+        <div class="debug-body">
+            <template x-for="(entry, i) in $store.game.getDebugEntries()" :key="i">
+                <div class="debug-entry" :class="entry.type === 'error' && 'error'">
+                    <div class="debug-label" x-text="entry.type.toUpperCase() + ' — ' + entry.time"></div>
+                    <pre x-text="entry.data"></pre>
+                </div>
+            </template>
+            <div x-show="$store.game.getDebugEntries().length === 0"
+                style="text-align:center;color:var(--text-muted);padding:40px 0;font-size:13px;">
+                暂无记录
+            </div>
+        </div>
+        <div class="debug-footer">
+            <button @click="$store.game.clearDebug()">🗑️ 清空日志</button>
+            <button @click="$store.game.hideDebugButton()"
+                style="margin-top:6px;background:rgba(139,92,246,0.1);border-color:rgba(139,92,246,0.2);color:var(--accent-light);">👁️‍🗨️
+                隐藏Debug按钮</button>
+        </div>
+    </div>
+
+    <!-- ===== 加载页面 ===== -->
+    <div x-show="$store.game.loading" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>正在初始化...</p>
+            <button class="skip-btn" @click="$store.game.skipLoading()">⏭️ 跳过等待</button>
+        </div>
+    </div>
+
+    <!-- ===== 设置界面 ===== -->
+    <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup-screen" style="display:none;">
+        <div class="setup-container">
+            <div class="setup-header">
+                <h1>🎭 私人定制</h1>
+                <p>创建你的专属AI角色</p>
+            </div>
+
+            <!-- 玩法说明 -->
+            <div class="gameplay-card">
+                <h3>📖 玩法说明</h3>
+                <ul>
+                    <li>填写角色信息后，AI会生成完整的角色设定</li>
+                    <li>进入聊天后可使用「特化」功能强化特定互动方向</li>
+
+                    <li>开启「防抢话」可防止AI代替你的角色行动</li>
+                    <li>所有聊天记录和设定会自动保存</li>
+                    <li>消息支持编辑、删除、重新生成</li>
+                </ul>
+            </div>
+
+            <div class="setup-form">
+                <!-- 玩家信息 -->
+                <div class="form-section">
+                    <label>👤 玩家姓名</label>
+                    <input x-model="$store.game.playerName" placeholder="输入你的名字">
+                </div>
+
+                <div class="form-section">
+                    <label>🏷️ 玩家身份</label>
+                    <input x-model="$store.game.playerIdentity" placeholder="例如：大学生、总裁、骑士...">
+                </div>
+
+                <hr style="border:none;border-top:1px solid var(--border-glass);margin:16px 0;">
+
+                <!-- 角色信息 -->
+                <div class="form-section">
+                    <label>💎 角色名字 <span style="color:var(--red)">*</span></label>
+                    <input x-model="$store.game.charName" placeholder="给角色起个名字">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-section">
+                        <label>🏷️ 身份</label>
+                        <input x-model="$store.game.charIdentity" placeholder="例如：女仆、学生...">
+                    </div>
+                    <div class="form-section">
+                        <label>👗 衣着</label>
+                        <input x-model="$store.game.charClothing" placeholder="例如：旗袍、制服...">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label>✨ 外貌</label>
+                    <textarea x-model="$store.game.charAppearance" rows="2"
+                        placeholder="描述角色外貌，如：白色长发、蓝色瞳孔、E罩杯..."></textarea>
+                </div>
+
+                <div class="form-section">
+                    <label>🎭 性格</label>
+                    <textarea x-model="$store.game.charPersonality" rows="2"
+                        placeholder="描述角色性格，如：傲娇、温柔、腹黑..."></textarea>
+                </div>
+
+                <div class="form-section">
+                    <label>📜 背景</label>
+                    <textarea x-model="$store.game.charBackground" rows="2" placeholder="角色的背景故事..."></textarea>
+                </div>
+
+                <div class="form-section">
+                    <label>💬 开场白要求</label>
+                    <textarea x-model="$store.game.openingRequirement" rows="2"
+                        placeholder="（选填）希望角色如何开场..."></textarea>
+                </div>
+
+                <hr style="border:none;border-top:1px solid var(--border-glass);margin:16px 0;">
+
+                <!-- 字数设置 -->
+                <div class="form-section">
+                    <label>📝 回复字数</label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="number" class="word-count-input" x-model="$store.game.antiStealWordCount" min="200"
+                            max="1200" placeholder="字数">
+                        <span style="font-size:12px;color:var(--text-muted)">字 (最高1200)</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">AI每次回复的最少字数</div>
+                </div>
+
+                <!-- 防抢话设置 -->
+                <div class="form-section">
+                    <label>🛡️ 防抢话</label>
+                    <div class="anti-steal-row">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="$store.game.antiSteal">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="anti-steal-label">禁止AI代替你行动</span>
+                    </div>
+                </div>
+
+                <!-- 模型选择 - 角色生成 -->
+                <div class="form-section">
+                    <label>🤖 角色生成模型</label>
+                    <select x-model="$store.game.genModel">
+                        <template x-for="m in $store.game.highModels" :key="m.value">
+                            <option :value="m.value" x-text="m.label"></option>
+                        </template>
+                    </select>
+                    <div class="model-hint">⚡ 此处对模型要求较高，不推荐使用低智商模型</div>
+                </div>
+
+                <!-- 生成角色按钮 -->
+                <div class="form-section" style="margin-top:10px;">
+                    <button class="generate-btn" @click="$store.game.generateCharacter()"
+                        :disabled="$store.game.generating || !$store.game.charName.trim()">
+                        <span x-show="!$store.game.generating">🎲 AI生成角色设定</span>
+                        <span x-show="$store.game.generating" style="display:none;">
+                            <span class="dot-loading"></span> 生成中...
+                        </span>
+                    </button>
+                    <div x-show="$store.game.generating" class="gen-progress" style="display:none;">
+                        <div class="gen-progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- 角色设定预览 -->
+                <div x-show="$store.game.characterJson" class="character-preview" style="display:none;">
+                    <div style="font-size:11px;color:var(--green);margin-bottom:6px;">✅ 角色设定已生成</div>
+                    <div x-text="$store.game.characterJson"></div>
+                </div>
+
+                <!-- 按钮组 -->
+                <div class="btn-group">
+                    <!-- 模型选择 - 聊天 -->
+                    <div class="form-section" style="margin-bottom:0;">
+                        <label>💬 聊天模型</label>
+                        <select x-model="$store.game.model">
+                            <template x-for="m in $store.game.allModels" :key="m.value">
+                                <option :value="m.value" x-text="m.label"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <button class="start-btn" @click="$store.game.start()"
+                        :disabled="!$store.game.charName.trim() || !$store.game.characterJson">
+                        🎮 开始游戏
+                    </button>
+
+                    <button class="secondary-btn" @click="$store.game.clearAllData()">
+                        🗑️ 清除所有数据
+                    </button>
+
+                    <button x-show="!$store.game.showDebugButton" class="secondary-btn"
+                        @click="$store.game.restoreDebugButton()" style="display:none;margin-top:6px;">
+                        🐛 恢复Debug按钮
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 聊天界面 ===== -->
+    <div x-show="$store.game.started && !$store.game.loading" x-transition class="chat-screen" style="display:none;">
+        <!-- 顶栏 -->
+        <div class="chat-header">
+            <button class="back-btn" @click="$store.game.backToSetup()">←</button>
+            <div class="chat-title">
+                <div class="title-info">
+                    <span class="name" x-text="$store.game.charName"></span>
+                    <span class="status-text">在线</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button @click="$store.game.showStatusBar = !$store.game.showStatusBar" title="状态栏">📊</button>
+                <button @click="$store.game.showSpecPanel = !$store.game.showSpecPanel" title="特化">🔧</button>
+                <button @click="$store.game.showModelSelect = !$store.game.showModelSelect" title="模型">⚙️</button>
+            </div>
+        </div>
+
+        <!-- 模型选择下拉 -->
+        <div x-show="$store.game.showModelSelect" class="model-dropdown"
+            @click.outside="$store.game.showModelSelect = false" style="display:none;">
+            <select x-model="$store.game.model"
+                @change="$store.game.showModelSelect = false; $store.game.saveSetting()">
+                <template x-for="m in $store.game.allModels" :key="m.value">
+                    <option :value="m.value" x-text="m.label"></option>
+                </template>
+            </select>
+        </div>
+
+        <!-- 状态栏 -->
+        <div x-show="$store.game.showStatusBar" class="status-bar" x-transition style="display:none;">
+            <div class="status-bar-header" @click="$store.game.showStatusBar = !$store.game.showStatusBar">
+                <span>📊 角色状态</span>
+                <span style="font-size:11px;color:var(--text-muted);">点击收起</span>
+            </div>
+            <div class="status-bar-content">
+                <div class="status-item">
+                    <span class="status-icon">👩</span>
+                    <span class="status-label">姓名</span>
+                    <span class="status-value" x-text="$store.game.heroineStatus.name || $store.game.charName"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">❤️</span>
+                    <span class="status-label">好感度</span>
+                    <div class="fav-bar-wrap">
+                        <div class="fav-bar">
+                            <div class="fav-fill" :style="'width:' + $store.game.heroineStatus.favorability + '%'">
+                            </div>
+                        </div>
+                        <span class="fav-num" x-text="$store.game.heroineStatus.favorability"></span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">😊</span>
+                    <span class="status-label">心情</span>
+                    <span class="status-value" x-text="$store.game.heroineStatus.mood"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">👗</span>
+                    <span class="status-label">衣着</span>
+                    <span class="status-value" x-text="$store.game.heroineStatus.clothing"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">🎭</span>
+                    <span class="status-label">动作</span>
+                    <span class="status-value" x-text="$store.game.heroineStatus.action"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">💋</span>
+                    <span class="status-label">性癖</span>
+                    <span class="status-value" x-text="$store.game.heroineStatus.fetish"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 特化标签展示 -->
+        <div x-show="$store.game.specializations.length > 0"
+            style="padding:6px 16px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
+            <template x-for="(sp, si) in $store.game.specializations" :key="si">
+                <span class="spec-tag">
+                    <span x-text="sp.name + '特化'"></span>
+                    <button class="remove-tag" @click="$store.game.editSpec(sp.name)" title="查看/编辑特化内容">✏️</button>
+                    <button class="remove-tag" @click="$store.game.removeSpec(sp.name)">✕</button>
+                </span>
+            </template>
+        </div>
+
+        <!-- 消息区域 -->
+        <div class="messages-area" x-ref="messagesArea">
+            <template x-for="(msg, index) in $store.game.messages" :key="index">
+                <div :class="'message ' + msg.role">
+                    <div class="bubble-wrapper" style="width:100%;">
+                        <div class="bubble" x-html="$store.game.formatMessage(msg.content)"></div>
+                        <div class="msg-time" x-text="msg.time || ''"></div>
+                        <!-- 消息操作 -->
+                        <template x-if="msg.role !== 'system'">
+                            <div class="msg-actions">
+                                <button @click="$store.game.openEdit(index)" title="编辑">✏️</button>
+                                <button @click="$store.game.deleteMessage(index)" title="删除">🗑️</button>
+                                <template x-if="msg.role === 'assistant' && $store.game.isLatestAssistant(index)">
+                                    <button @click="$store.game.regenerateLatest()" title="重新生成">🔄</button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 打字指示器 -->
+            <div x-show="$store.game.typing" class="message assistant" style="display:none;">
+                <div class="bubble-wrapper">
+                    <div class="bubble">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input x-model="$store.game.input" @keydown.enter="$store.game.send()" :disabled="$store.game.sending"
+                    placeholder="输入消息...">
+                <button class="send-btn" @click="$store.game.send()"
+                    :disabled="$store.game.sending || !$store.game.input.trim()">发送</button>
+            </div>
+            <div class="action-bar">
+                <button @click="$store.game.showSpecPanel = true">🔧 特化</button>
+
+                <button @click="$store.game.regenerateLatest()" :disabled="$store.game.sending">🔄 重新生成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 特化面板 ===== -->
+    <template x-if="$store.game.showSpecPanel">
+        <div>
+            <div class="panel-backdrop" @click="$store.game.showSpecPanel = false"></div>
+            <div class="spec-panel">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                    <h3>🔧 特化系统</h3>
+                    <button
+                        style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;"
+                        @click="$store.game.showSpecPanel = false">✕</button>
+                </div>
+
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">选择预设特化或自定义输入</div>
+
+                <!-- 模型选择 -->
+                <div class="modal-input-group">
+                    <label>生成模型</label>
+                    <select x-model="$store.game.genModel">
+                        <template x-for="m in $store.game.highModels" :key="m.value">
+                            <option :value="m.value" x-text="m.label"></option>
+                        </template>
+                    </select>
+                    <div class="model-hint" style="margin-top:4px;">⚡ 此处对模型要求较高，不推荐使用低智商模型</div>
+                </div>
+
+                <!-- 预设按鈕 -->
+                <div class="spec-grid" style="margin-top:12px;">
+                    <template x-for="sp in $store.game.presetSpecs" :key="sp">
+                        <button @click="$store.game.addPresetSpec(sp)" :class="$store.game.isSpecAdded(sp) && 'added'">
+                            <span x-text="$store.game.isSpecAdded(sp) ? '✅ ' + sp : sp"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- 已添加特化列表 -->
+                <div x-show="$store.game.specializations.length > 0" style="margin-top:12px;">
+                    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">已添加的特化（点击可编辑内容）</div>
+                    <template x-for="sp in $store.game.specializations" :key="sp.name">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                            <button class="spec-edit-item" @click="$store.game.editSpec(sp.name)"
+                                style="flex:1;text-align:left;padding:6px 10px;background:var(--bg-glass-hover);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);font-size:13px;cursor:pointer;">
+                                <span x-text="sp.name + '特化'"></span> <span
+                                    style="color:var(--text-muted);font-size:11px;">✏️ 查看/编辑</span>
+                            </button>
+                            <button @click="$store.game.removeSpec(sp.name)"
+                                style="padding:6px 8px;background:none;border:1px solid var(--border-glass);border-radius:8px;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 自定义特化 -->
+                <div class="spec-custom-area">
+                    <textarea x-model="$store.game.customSpecInput" rows="2" placeholder="输入自定义特化名称/要求，例如：舔耳、窒息play..."
+                        :disabled="$store.game.generatingSpec"></textarea>
+                    <button class="generate-btn" @click="$store.game.addCustomSpec()"
+                        :disabled="!$store.game.customSpecInput.trim() || $store.game.generatingSpec">
+                        <span x-show="!$store.game.generatingSpec">➕ 生成自定义特化</span>
+                        <span x-show="$store.game.generatingSpec" style="display:none;">
+                            <span class="dot-loading"></span> 生成中...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 超过3个警告 -->
+                <div x-show="$store.game.specializations.length > 3" class="spec-warning" style="display:none;">
+                    ⚠️ 因为AI上下文窗口限制，过多的特化会增加积分的消耗
+                </div>
+
+                <!-- 生成中进度 -->
+                <div x-show="$store.game.generatingSpec" class="gen-progress" style="display:none;">
+                    <div class="gen-progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+
+
+    <!-- ===== 编辑消息弹窗 ===== -->
+    <div x-show="$store.game.showEditModal" class="modal-overlay" @click.self="$store.game.showEditModal = false"
+        style="display:none;">
+        <div class="modal-content">
+            <h3>✏️ 编辑消息</h3>
+            <textarea class="edit-textarea" x-model="$store.game.editContent" rows="6"></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" @click="$store.game.showEditModal = false">取消</button>
+                <button class="btn-confirm" @click="$store.game.saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 编辑特化内容弹窗 ===== -->
+    <div x-show="$store.game.showSpecEditModal" class="modal-overlay"
+        @click.self="$store.game.showSpecEditModal = false" style="display:none;">
+        <div class="modal-content" style="max-width:520px;">
+            <h3>✏️ <span x-text="$store.game.editingSpecName + '特化内容'"></span></h3>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">可直接修改特化提示词，修改后会应用到当前对话</div>
+            <textarea class="edit-textarea" x-model="$store.game.editingSpecContent" rows="10"
+                style="font-size:12px;line-height:1.6;font-family:monospace;"></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" @click="$store.game.showSpecEditModal = false">取消</button>
+                <button class="btn-confirm" @click="$store.game.saveSpecEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
