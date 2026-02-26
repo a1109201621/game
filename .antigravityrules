@@ -1,0 +1,1 @@
+Always run terminal commands with non-interactive flags (e.g., --yes, -y). When running commands on Windows, wrap them like this: cmd /c <command> & :: to ensure a clean exit and EOF signal.

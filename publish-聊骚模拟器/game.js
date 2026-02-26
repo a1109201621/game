@@ -287,7 +287,7 @@ document.addEventListener('alpine:init', () => {
 
 请严格按照以下JSON格式输出角色设定，不要输出任何其他内容。
 
-下面是一个正确的输出示例，供你参考格式（注意personality和style中每条用分号;分隔）：
+下面是一个正确的输出示例，供你参考格式（注意personality和style中每条用英文分号;分隔）：
 {
   "name": "林晓雪",
   "personality": "- 活泼可爱但有点物质，喜欢漂亮东西;- 大二在读，经常说自己穷、吃土;- 收到礼物会很开心，会更加热情;- 有点小心机但不坏，就是想被宠;- 偶尔会有点骚，但又会装矜持",
@@ -306,7 +306,7 @@ document.addEventListener('alpine:init', () => {
 2. 要符合女性的特点
 3. 聊天风格不要提到发自拍或发图片，图片由系统自动处理
 4. 只输出JSON，不要有任何其他文字或解释
-5. personality和style的值必须是单行字符串，条目之间用分号;连接`;
+5. personality和style的值必须是单行字符串，条目之间用英文分号;连接`;
 
             try {
                 let content = '';
@@ -329,41 +329,46 @@ document.addEventListener('alpine:init', () => {
 
                             // 清理可能的多余字符
                             jsonStr = jsonStr.trim();
-
-                            // 宽泛匹配：找到第一个{和最后一个}之间的内容
-                            const firstBrace = jsonStr.indexOf('{');
-                            const lastBrace = jsonStr.lastIndexOf('}');
-                            if (firstBrace !== -1 && lastBrace > firstBrace) {
-                                jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+                            if (!jsonStr.startsWith('{')) {
+                                const startIdx = jsonStr.indexOf('{');
+                                if (startIdx !== -1) {
+                                    jsonStr = jsonStr.substring(startIdx);
+                                }
+                            }
+                            if (!jsonStr.endsWith('}')) {
+                                const endIdx = jsonStr.lastIndexOf('}');
+                                if (endIdx !== -1) {
+                                    jsonStr = jsonStr.substring(0, endIdx + 1);
+                                }
                             }
 
-                            // 尝试修复常见的JSON问题：去掉尾逗号
-                            jsonStr = jsonStr.replace(/,\s*}/g, '}');
-
-                            let data = null;
                             let parsed = false;
+                            let data = null;
 
-                            // 第一次尝试：直接解析JSON
+                            // 方法1：直接JSON.parse
                             try {
                                 data = JSON.parse(jsonStr);
                                 parsed = true;
                             } catch (e) {
-                                // 第二次尝试：将换行符替换为;后再解析
+                                // 方法2：尝试修复常见的JSON格式问题（如真实换行、单引号等）
                                 try {
-                                    const fixedStr = jsonStr.replace(/\n/g, ';');
+                                    let fixedStr = jsonStr
+                                        .replace(/\r?\n/g, ' ')       // 把真实换行替换为空格
+                                        .replace(/'/g, '"')           // 单引号换双引号
+                                        .replace(/,\s*}/g, '}')       // 移除尾逗号
+                                        .replace(/,\s*]/g, ']');      // 移除数组尾逗号
                                     data = JSON.parse(fixedStr);
                                     parsed = true;
                                 } catch (e2) {
-                                    // 第三次尝试：用正则从文本中提取字段
+                                    // 方法3：正则提取各字段
                                     try {
-                                        const nameMatch = content.match(/["']?name["']?\s*[:：]\s*["']([^"']+)["']/);
-                                        const personalityMatch = content.match(/["']?personality["']?\s*[:：]\s*["']([\s\S]*?)["']\s*[,}\n]/);
-                                        const styleMatch = content.match(/["']?style["']?\s*[:：]\s*["']([\s\S]*?)["']\s*[,}\n]/);
-
-                                        if (nameMatch || personalityMatch || styleMatch) {
+                                        const nameMatch = jsonStr.match(/["']?name["']?\s*[:：]\s*["'"]([^"'"]+)["'"]/i);
+                                        const persMatch = jsonStr.match(/["']?personality["']?\s*[:：]\s*["'"]([^"'"]+)["'"]/i);
+                                        const styleMatch = jsonStr.match(/["']?style["']?\s*[:：]\s*["'"]([^"'"]+)["'"]/i);
+                                        if (nameMatch || persMatch || styleMatch) {
                                             data = {
                                                 name: nameMatch ? nameMatch[1] : '',
-                                                personality: personalityMatch ? personalityMatch[1] : '',
+                                                personality: persMatch ? persMatch[1] : '',
                                                 style: styleMatch ? styleMatch[1] : ''
                                             };
                                             parsed = true;
@@ -373,22 +378,21 @@ document.addEventListener('alpine:init', () => {
                             }
 
                             if (parsed && data) {
-                                // 统一处理分隔符：将 ; 和 \\n 都转为真实换行
-                                const normalizeSep = (str) => (str || '').replace(/\\n/g, '\n').replace(/;/g, '\n');
-
+                                // 应用生成的数据，兼容分号和\\n两种分隔符
                                 if (data.name) this.charName = data.name;
-                                if (data.personality) this.charPersonality = normalizeSep(data.personality);
-                                if (data.style) this.charStyle = normalizeSep(data.style);
+                                if (data.personality) this.charPersonality = data.personality.replace(/;/g, '\n').replace(/\\n/g, '\n');
+                                if (data.style) this.charStyle = data.style.replace(/;/g, '\n').replace(/\\n/g, '\n');
                             } else {
-                                // 完全解析失败：将原始内容放入性格列
+                                // 完全无法解析，将原始内容填入性格列
+                                console.error('解析AI响应失败，原始内容:', content);
                                 this.charPersonality = content.trim();
                                 this.charStyle = '';
                                 alert('格式错误，已将结果输出在性格列，请自行修改。或者切换max模型重试');
                             }
 
                         } catch (parseError) {
+                            // 最外层兜底：将原始内容填入性格列
                             console.error('解析AI响应失败:', parseError, content);
-                            // 解析异常也做兜底处理
                             this.charPersonality = content.trim();
                             this.charStyle = '';
                             alert('格式错误，已将结果输出在性格列，请自行修改。或者切换max模型重试');
