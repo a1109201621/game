@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>婊子奥特格斗</title>
+    <script>(function () {
+            'use strict';
+            function l(r) {
+                if (r == null || typeof r != 'object') return r;
+                try { return JSON.parse(JSON.stringify(r)); } catch { return r; }
+            }
+            var o = class {
+                constructor(e, s = window) {
+                    this.targetWindow = e; this.sourceWindow = s;
+                    this.listeners = new Map(); this.streamListeners = new Map();
+                    this.messageHandler = null;
+                }
+                start(e) {
+                    this.messageHandler || ((this.messageHandler = async (s) => {
+                        if (s.source !== this.targetWindow) return;
+                        let t = s.data;
+                        if (t.type === 'dzmm:response') {
+                            let n = this.listeners.get(t.id);
+                            n && (this.listeners.delete(t.id), t.error ? n(Promise.reject(new Error(t.error))) : n(t.result));
+                        } else if (t.type === 'dzmm:stream') {
+                            let n = this.streamListeners.get(t.id);
+                            n && (n(t.content, t.done), t.done && this.streamListeners.delete(t.id));
+                        } else t.type === 'dzmm:request' && e && (await e(t));
+                    }), this.sourceWindow.addEventListener('message', this.messageHandler));
+                }
+                stop() {
+                    this.messageHandler && (this.sourceWindow.removeEventListener('message', this.messageHandler),
+                        (this.messageHandler = null)), this.listeners.clear(), this.streamListeners.clear();
+                }
+                send(e) { this.targetWindow.postMessage(e, '*'); }
+                request(e, s = {}) {
+                    let t = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    return new Promise((n, i) => {
+                        this.listeners.set(t, (a) => { a instanceof Promise ? a.catch(i) : n(a); }),
+                            this.send({ type: 'dzmm:request', id: t, method: e, params: l(s) });
+                    });
+                }
+                requestWithStream(e, s, t) {
+                    let n = `${Date.now()}-${Math.random().toString(36).slice(2)}`, i = `${n}-stream`;
+                    return (this.streamListeners.set(i, t), new Promise((a, c) => {
+                        this.listeners.set(n, (m) => { m instanceof Promise ? m.catch(c) : a(m); }),
+                            this.send({ type: 'dzmm:request', id: n, method: e, params: l({ ...s, _streamId: i }) });
+                    }));
+                }
+                respond(e, s, t) { this.send({ type: 'dzmm:response', id: e, result: s, error: t }); }
+                streamUpdate(e, s, t) { this.send({ type: 'dzmm:stream', id: e, content: s, done: t }); }
+            };
+            var d = class {
+                constructor(e = window.parent) {
+                    this.kv = {
+                        get: (e) => this.channel.request('kv.get', { key: e }),
+                        put: (e, s) => this.channel.request('kv.put', { key: e, value: s }),
+                        delete: (e) => this.channel.request('kv.delete', { key: e }),
+                    };
+                    this.draw = { generate: (e) => this.channel.request('draw.generate', e) };
+                    this.chat = {
+                        list: (e) => this.channel.request('chat.list', { ids: e }),
+                        insert: (e, s) => this.channel.request('chat.insert', { parentId: e, messages: s }),
+                        timeline: (e) => this.channel.request('chat.timeline', { hasId: e }),
+                    };
+                    if (typeof window > 'u') throw new Error('GamefyBrowserSDK requires a browser environment');
+                    (this.channel = new o(e, window)), this.channel.start(),
+                        e !== window && (e.postMessage('iframe:content-ready', '*'),
+                            window.addEventListener('message', (s) => {
+                                s.data?.type === 'dzmm:parent-ready' && e.postMessage('iframe:content-ready', '*');
+                            }));
+                }
+                async completions(e, s) {
+                    let t = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    await this.channel.requestWithStream('completions', { ...e, _streamId: t }, (n, i) => s?.(n, i, t));
+                }
+            };
+            if (typeof window < 'u') try { let r = new d(); window.dzmm = r; } catch (r) { console.error('[Gamefy SDK] Init failed:', r); }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body x-data="">
+
+    <!-- ==================== Debug 按钮 ==================== -->
+    <button class="debug-toggle" @click="$store.game.debugPanel.open = !$store.game.debugPanel.open" title="Debug面板">
+        🔧
+    </button>
+
+    <!-- ==================== Debug 面板 ==================== -->
+    <div class="debug-panel" x-show="$store.game.debugPanel.open" x-transition>
+        <div class="debug-header">
+            <span>🔧 Debug 面板</span>
+            <button @click="$store.game.debugPanel.open = false">✕</button>
+        </div>
+        <div class="debug-body">
+            <div class="debug-section">
+                <div class="debug-title">📤 最近发送的提示词</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.lastSent || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">📥 原始响应数据</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.rawResponse || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">✅ 解析结果</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.parsedContent || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">🔗 SDK状态</div>
+                <pre class="debug-content" x-text="$store.game.debugPanel.responseStatus || '暂无'"></pre>
+            </div>
+            <div class="debug-section">
+                <div class="debug-title">❌ 错误日志 (<span
+                        x-text="$store.game.debugPanel.errors.length"></span>)</div>
+                <pre class="debug-content error-log"
+                    x-text="$store.game.debugPanel.errors.join('\n') || '暂无错误'"></pre>
+            </div>
+            <div class="debug-actions">
+                <button @click="$store.game.clearDebugLogs()">清空</button>
+                <button @click="$store.game.exportDebugLogs()">导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 加载界面 ==================== -->
+    <div class="loading-screen" x-show="$store.game.loading" x-transition>
+        <div class="loading-card">
+            <div class="loading-icon">⚡</div>
+            <div class="loading-title">婊子奥特格斗</div>
+            <div class="loading-sub">用高潮充能必杀技，用快感消灭怪兽！</div>
+            <div class="loading-spinner"></div>
+            <button class="skip-btn" @click="$store.game.skipLoading()">跳过加载</button>
+        </div>
+    </div>
+
+    <!-- ==================== 主菜单界面 ==================== -->
+    <div class="main-menu" x-show="!$store.game.started && !$store.game.loading" x-transition>
+        <div class="menu-card">
+            <div class="menu-header">
+                <h1>⚡ 婊子奥特格斗</h1>
+                <p class="subtitle">Bitch Ultraman Fighter</p>
+            </div>
+
+            <!-- 游戏玩法说明 -->
+            <div class="gameplay-info">
+                <h3>📜 游戏玩法</h3>
+                <div class="info-content">
+                    <p><strong>🦸‍♀ 角色设定：</strong>你是婊子奥特曼的人间体，生性淫乱。婊子奥特曼的皮套头部面具口腔开口、胸部乳头突起、裆部完全开口——专为"战斗"设计。</p>
+                    <p><strong>⚔️ 战斗方式：</strong>怪兽在战斗中会用各种方式强奸奥特曼。通过被强奸达到高潮并中出，精液进入子宫后分析怪兽弱点，为必杀技充能。</p>
+                    <p><strong>💥 必杀技：</strong>充能满100%后释放"怪兽名-必杀光线"消灭怪兽。击杀后变回人间体。</p>
+                    <p><strong>📋 人物志：</strong>每次击败怪兽后可以打分，战斗全程记录在"强奸人物志"中。</p>
+                    <p><strong>🎯 遇袭：</strong>人间体时点击"遇袭"按钮，随机或自选怪兽袭击随机地点！</p>
+                </div>
+            </div>
+
+            <!-- 设置 -->
+            <div class="settings-section">
+                <h3>👤 玩家设置</h3>
+                <div class="form-group">
+                    <label>你的名字（人间体）</label>
+                    <input type="text" x-model="$store.game.playerName" placeholder="输入你的名字">
+                </div>
+                <div class="form-group">
+                    <label>模型选择</label>
+                    <select x-model="$store.game.model">
+                        <option value="nalang-turbo-0826">nalang-turbo-0826（快速）</option>
+                        <option value="nalang-medium-0826">nalang-medium-0826（平衡）</option>
+                        <option value="nalang-max-0826">nalang-max-0826（高质量）</option>
+                        <option value="nalang-xl-0826">nalang-xl-0826（最强推荐）</option>
+                        <option value="x-apex-0212">x-apex-0212（文笔精致）</option>
+                        <option value="x-apex-neo">x-apex-neo（叙事细腻）</option>
+                        <option value="x-apex-flux-0217">x-apex-flux-0217（节奏明快）</option>
+                    </select>
+                    <div class="form-hint">推荐使用 xl 以上模型获得最佳体验</div>
+                </div>
+            </div>
+
+            <!-- 怪兽选择 -->
+            <div class="settings-section">
+                <h3>👾 选择对手怪兽（点击查看详情）</h3>
+                <div class="monster-grid">
+                    <template x-for="m in $store.game.getMonsters()" :key="m.id">
+                        <div class="monster-card"
+                            :class="{ selected: $store.game.selectedMonsterId === m.id }"
+                            @click="$store.game.selectMonster(m.id)"
+                            @dblclick="$store.game.viewMonsterInfo(m.id)">
+                            <div class="monster-emoji" x-text="m.emoji"></div>
+                            <div class="monster-name" x-text="m.name"></div>
+                            <div class="monster-type" x-text="m.type"></div>
+                        </div>
+                    </template>
+                </div>
+                <div class="form-hint" style="margin-top:10px;">单击选择，双击查看详细介绍</div>
+            </div>
+
+            <!-- 按钮 -->
+            <div class="menu-buttons">
+                <button class="primary-btn" @click="$store.game.startGame()"
+                    :disabled="!$store.game.playerName.trim() || !$store.game.selectedMonsterId">
+                    ⚡ 变身出击
+                </button>
+                <button class="secondary-btn" @click="$store.game.openSaveManager()">
+                    💾 存档管理
+                </button>
+            </div>
+
+            <div class="start-hint"
+                x-show="!$store.game.playerName.trim() || !$store.game.selectedMonsterId">
+                <span x-show="!$store.game.playerName.trim()">⚠️ 请输入你的名字</span>
+                <span x-show="!$store.game.selectedMonsterId">⚠️ 请选择一个怪兽</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 游戏界面 ==================== -->
+    <div class="game-screen" x-show="$store.game.started && !$store.game.loading" x-transition>
+
+        <!-- 顶部栏 -->
+        <div class="game-topbar">
+            <div class="topbar-left">
+                <span class="game-title">⚡ 婊子奥特格斗</span>
+                <span class="player-info"
+                    x-text="$store.game.playerName + ' · ' + ($store.game.mode === 'ultra' ? '奥特曼形态' : '人间体')"></span>
+            </div>
+            <div class="topbar-right">
+                <button class="icon-btn"
+                    @click="$store.game.statusOpen = !$store.game.statusOpen"
+                    :class="{ active: $store.game.statusOpen }" title="状态栏">📊</button>
+                <button class="icon-btn" @click="$store.game.openChronicle()" title="强奸人物志">📖</button>
+                <button class="icon-btn" @click="$store.game.openSaveManager()" title="存档管理">💾</button>
+                <button class="icon-btn" @click="$store.game.backToMenu()" title="返回主菜单">🏠</button>
+            </div>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar" x-show="$store.game.statusOpen" x-transition>
+            <div class="status-header">
+                <span>📊 战斗状态</span>
+                <button @click="$store.game.statusOpen = false">✕</button>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-item full">
+                    <div class="status-label">🦸 身体状态</div>
+                    <div class="status-value" x-text="$store.game.bodyStatus"></div>
+                </div>
+
+                <!-- 大招充能 -->
+                <div class="status-item full charge-section"
+                    x-show="$store.game.mode === 'ultra' && $store.game.currentMonster">
+                    <div class="status-label" x-text="'💥 大招充能：' + ($store.game.chargeName || '未知')"></div>
+                    <div class="charge-bar-wrap">
+                        <div class="charge-bar">
+                            <div class="charge-fill" :style="'width:' + $store.game.chargeProgress + '%'">
+                            </div>
+                        </div>
+                        <div class="charge-text" x-text="$store.game.chargeProgress + '%'"></div>
+                    </div>
+                    <button class="release-btn"
+                        x-show="$store.game.chargeProgress >= 100"
+                        @click="$store.game.releaseUltimate()"
+                        :disabled="$store.game.generating">
+                        ✨ 释放必杀！——<span x-text="$store.game.chargeName"></span>！
+                    </button>
+                </div>
+
+                <div class="status-item">
+                    <div class="status-label">👄 口穴</div>
+                    <div class="status-value" x-text="$store.game.oralStatus"></div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">🌸 屄穴</div>
+                    <div class="status-value" x-text="$store.game.vaginaStatus"></div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">🍑 菊穴</div>
+                    <div class="status-value" x-text="$store.game.analStatus"></div>
+                </div>
+                <div class="status-item full">
+                    <div class="status-label">💬 奥特吐槽</div>
+                    <div class="status-value" x-text="$store.game.ultraComment"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="chat-area">
+            <div class="messages-container" x-ref="messagesContainer">
+                <template x-for="(msg, index) in $store.game.messages" :key="msg.id">
+                    <div class="message" :class="msg.role">
+                        <div class="message-header">
+                            <span class="message-role"
+                                x-text="msg.role === 'user' ? $store.game.playerName : '旁白'"></span>
+                            <div class="message-actions">
+                                <button class="msg-action-btn" @click="$store.game.editMessage(index)"
+                                    title="编辑">✏️</button>
+                                <button class="msg-action-btn" @click="$store.game.deleteMessage(index)"
+                                    title="删除">🗑️</button>
+                                <button class="msg-action-btn"
+                                    x-show="index === $store.game.messages.length - 1 && msg.role === 'assistant'"
+                                    @click="$store.game.regenerateMessage()" title="重新生成">🔄</button>
+                            </div>
+                        </div>
+                        <div class="message-content" x-html="$store.game.formatMessage(msg.content)"></div>
+                    </div>
+                </template>
+
+                <!-- 正在生成 -->
+                <div class="message assistant generating" x-show="$store.game.generating">
+                    <div class="message-header">
+                        <span class="message-role">旁白</span>
+                    </div>
+                    <div class="message-content">
+                        <span class="typing-indicator">正在生成<span class="dots">...</span></span>
+                        <div class="generating-preview" x-text="$store.game.generatingContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮行 -->
+        <div class="action-row" x-show="$store.game.mode === 'human'">
+            <button class="action-btn" @click="$store.game.triggerEncounter()"
+                :disabled="$store.game.generating">
+                🎯 遇袭（随机怪兽）
+            </button>
+            <button class="action-btn" @click="$store.game.openEncounterSelect()"
+                :disabled="$store.game.generating">
+                👾 选择怪兽遇袭
+            </button>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="input-area">
+            <textarea x-model="$store.game.inputText"
+                :placeholder="$store.game.mode === 'ultra' ? '描述你的行动/挣扎/反应...（Ctrl+Enter发送）' : '描述你的日常...（Ctrl+Enter发送）'"
+                :disabled="$store.game.generating"
+                @keydown.ctrl.enter="$store.game.sendMessage()" rows="2"></textarea>
+            <button class="send-btn" @click="$store.game.sendMessage()"
+                :disabled="$store.game.generating || !$store.game.inputText.trim()">
+                <span x-show="!$store.game.generating">发送</span>
+                <span x-show="$store.game.generating">生成中...</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 存档管理弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.saveManagerOpen" x-transition
+        @click.self="$store.game.saveManagerOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>💾 存档管理</span>
+                <button @click="$store.game.saveManagerOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <template x-for="slot in [1,2,3,4,5]" :key="slot">
+                    <div class="save-slot">
+                        <div class="slot-info">
+                            <div class="slot-name">存档位 <span x-text="slot"></span></div>
+                            <div class="slot-meta" x-text="$store.game.saveInfoCache[slot] || '加载中...'"></div>
+                        </div>
+                        <div class="slot-actions">
+                            <button @click="$store.game.saveToSlot(slot)"
+                                :disabled="!$store.game.started">保存</button>
+                            <button @click="$store.game.loadFromSlot(slot)">读取</button>
+                            <button class="danger" @click="$store.game.deleteSlot(slot)">删除</button>
+                        </div>
+                    </div>
+                </template>
+                <div class="save-note">💡 存档通过 dzmm.kv 保存，发布后数据持久化</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 消息编辑弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.editModalOpen" x-transition
+        @click.self="$store.game.editModalOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>✏️ 编辑消息</span>
+                <button @click="$store.game.editModalOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea x-model="$store.game.editingContent" rows="14"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button @click="$store.game.editModalOpen = false">取消</button>
+                <button class="primary" @click="$store.game.confirmEdit()">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 怪兽详情弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.monsterInfoOpen" x-transition
+        @click.self="$store.game.monsterInfoOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>👾 怪兽档案</span>
+                <button @click="$store.game.monsterInfoOpen = false">✕</button>
+            </div>
+            <div class="modal-body" x-show="$store.game.viewingMonster">
+                <div class="monster-detail">
+                    <h3>
+                        <span x-text="$store.game.viewingMonster?.emoji"></span>
+                        <span x-text="$store.game.viewingMonster?.name"></span>
+                    </h3>
+                    <div class="detail-row">
+                        <div class="detail-label">分类</div>
+                        <div class="detail-text" x-text="$store.game.viewingMonster?.type"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">简介</div>
+                        <div class="detail-text" x-text="$store.game.viewingMonster?.desc"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">🔞 战斗中的强奸方式</div>
+                        <div class="detail-text" x-text="$store.game.viewingMonster?.attackStyle"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">弱点</div>
+                        <div class="detail-text" x-text="$store.game.viewingMonster?.weakPoint"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary" @click="$store.game.selectMonster($store.game.viewingMonster?.id); $store.game.monsterInfoOpen = false">
+                    选择此怪兽
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 强奸人物志弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.chronicleOpen" x-transition
+        @click.self="$store.game.chronicleOpen = false">
+        <div class="modal wide">
+            <div class="modal-header">
+                <span>📖 强奸人物志</span>
+                <button @click="$store.game.chronicleOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <template x-if="$store.game.chronicle.length === 0">
+                    <div style="text-align:center; color: var(--text-secondary); padding: 30px;">
+                        还没有击败过怪兽，去战斗吧！
+                    </div>
+                </template>
+                <div class="chronicle-list">
+                    <template x-for="(c, ci) in $store.game.chronicle" :key="ci">
+                        <div class="chronicle-item" @click="$store.game.viewChronicleDetail(ci)">
+                            <div class="chronicle-header">
+                                <div class="chronicle-name">
+                                    <span x-text="c.monsterEmoji"></span>
+                                    <span x-text="c.monsterName"></span>
+                                </div>
+                                <div class="chronicle-score">
+                                    <span x-text="c.score > 0 ? '⭐'.repeat(c.score) : '未评分'"></span>
+                                </div>
+                            </div>
+                            <div class="chronicle-summary" x-text="c.summary"></div>
+                            <div style="font-size:11px; color: var(--text-secondary); margin-top:4px;"
+                                x-text="new Date(c.timestamp).toLocaleString()"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 人物志详情弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.chronicleDetailOpen" x-transition
+        @click.self="$store.game.chronicleDetailOpen = false">
+        <div class="modal wide">
+            <div class="modal-header">
+                <span x-text="'📖 战斗详情 - ' + ($store.game.currentChronicle?.monsterName || '')"></span>
+                <button @click="$store.game.chronicleDetailOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="chronicle-messages" x-show="$store.game.currentChronicle">
+                    <template x-for="(msg, mi) in ($store.game.currentChronicle?.messages || [])" :key="mi">
+                        <div class="chronicle-msg" :class="msg.role === 'user' ? 'user-msg' : 'assistant-msg'">
+                            <div class="msg-label" x-text="msg.role === 'user' ? '玩家' : '旁白'"></div>
+                            <div x-html="$store.game.formatMessage(msg.content)"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 评分弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.ratingOpen" x-transition>
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <span>⭐ 怪兽评分</span>
+                <button @click="$store.game.ratingOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="rating-section">
+                    <p>战斗结束！给这只怪兽的"表现"打个分吧~</p>
+                    <div class="stars">
+                        <template x-for="s in [1,2,3,4,5]" :key="s">
+                            <span class="star"
+                                :class="{ active: s <= $store.game.ratingScore }"
+                                @click="$store.game.ratingScore = s"
+                                x-text="s <= $store.game.ratingScore ? '⭐' : '☆'">
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button @click="$store.game.ratingOpen = false">跳过</button>
+                <button class="primary" @click="$store.game.submitRating($store.game.ratingScore)">
+                    确认评分
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 选择遇袭怪兽弹窗 ==================== -->
+    <div class="modal-mask" x-show="$store.game.encounterSelectOpen" x-transition
+        @click.self="$store.game.encounterSelectOpen = false">
+        <div class="modal">
+            <div class="modal-header">
+                <span>👾 选择遇袭怪兽</span>
+                <button @click="$store.game.encounterSelectOpen = false">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="monster-grid">
+                    <template x-for="m in $store.game.getMonsters()" :key="m.id">
+                        <div class="monster-card" @click="$store.game.selectEncounterMonster(m.id)">
+                            <div class="monster-emoji" x-text="m.emoji"></div>
+                            <div class="monster-name" x-text="m.name"></div>
+                            <div class="monster-type" x-text="m.type"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
