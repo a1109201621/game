@@ -232,25 +232,23 @@ document.addEventListener('alpine:init', () => {
 
         // ==================== dzmm API Wrappers ====================
         async callCompletions(messages, maxTokens = 3000) {
-            return new Promise((resolve, reject) => {
-                let full = '';
-                if (!isDzmmInjected()) {
-                    reject(new Error('dzmm SDK 未加载，请确保在 dzmm.kz 平台上运行'));
-                    return;
+            if (!isDzmmInjected()) {
+                throw new Error('dzmm SDK 未加载，请确保在 dzmm.kz 平台上运行');
+            }
+            let full = '';
+            await dzmm.completions({
+                model: this.model,
+                messages: messages,
+                maxTokens: maxTokens
+            }, (content, done) => {
+                if (content) {
+                    full = content;  // SDK 回调中 content 已经是累积的完整内容，不要用 += 重复累积
+                    this.generatingContent = full;
+                    this.scrollToBottom();
                 }
-                dzmm.completions({
-                    model: this.model,
-                    messages: messages,
-                    maxTokens: maxTokens
-                }, (content, done) => {
-                    if (content) {
-                        full += content;
-                        this.generatingContent = full;
-                        this.scrollToBottom();
-                    }
-                    if (done) resolve(full);
-                }).catch(reject);
+                if (done && !full && content) full = content;
             });
+            return full;
         },
 
         async kvPut(key, value) {
