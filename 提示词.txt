@@ -1,0 +1,106 @@
+3D串：
+    正面：
+    ```
+    best quality, masterpiece, realistic,
+    2.00::3D ::,
+    1.20::Artist:jagercoke ::,
+    1.40::Artist:yinse_qi_ji ::,
+    1.50::Artist:nixeu ::,
+    0.50::Artist:ria_(baka-neearts) ::,
+    1.40::artist：seven_(sixplusone) ::,
+    very aesthetic, masterpiece, no text,photorealistic, hyperrealistic, realistic skin texture, skin pores,
+    volumetric lighting, soft shadows,
+    detailed eyes with reflections, eyelash details,
+    8k,sharp focus, depth of field
+    ```
+    负面：
+    ```
+    low quality, worst quality, anime, cartoon,painting, drawing, oversaturated, deformed hands, extra fingers, mutated hands, unnatural lighting, unrealistic eyes, plastic skin, doll-like, symmetry, blurry background, poorly drawn face, text, watermark, abstract background, low resolution
+    ```
+
+二次元串：
+    正面：
+    ```
+    masterpiece, best quality,year2025,anime style, official art style,
+    1.55::artist:nobusawa_osamu ::,
+    1.35::artist:tedain ::,
+    0.95::artist:asou_(asabu202) ::,
+    1.05::Artist:kcccc ::,
+    1.05::Artist:nixeu ::,
+    0.75::Artist:rella ::,
+    desaturated, muted colors, pastel palette, soft lighting,
+    low contrast, gentle shading, matte background,
+    overcast sky, natural lighting, cinematic atmosphere,
+    soft focus, delicate details, ambient occlusion,no text
+    ```
+    负面：
+    ```
+    worst quality,low quality,vibrant colors, neon, saturated, high contrast,
+    vivid, colorful, pop art, fluorescent,
+    hard lighting, harsh shadows, glare, bloom,
+    photorealistic, 3D render, realistic,lowres,signature,username,bad id,bad twitter id,english commentary,logo,bad hands,mutated hands,mammal,anthro,furry,text
+    ```
+
+心臓弱眞君:
+    正面：
+    ```
+    2.12::chibi ::,
+    1.78::Artist:xinzoruo(chibi) ::,
+    kawaii,  small body proportions, round face, soft lighting, pastel colors,no text
+    ```
+        负面：
+    ```
+    big head, realistic, photorealistic, deformed, asymmetric eyes, long limbs, mature features, sharp edges, dark shadows, complex background, horror elements, monochrome, blood,  low quality, extra limbs, bad anatomy, muscular, adult proportions, gloomy atmosphere
+    ```
+
+武侠水墨：
+    正面：
+    ```
+    masterpiece, ultra-detailed, 
+    2.0::ink_wash_painting ::,
+    1.5::greyscale ::,
+    1.5::spot color ::,
+    1.75::Artist:xuedaixun(ink_wash_painting) ::,
+    1.22::Artist:haban_(haban35)(ink_wash_painting) ::,
+    0.7::Artist:jagercoke ::,
+    0.7::Artist:kcccc ::,
+    inkblot,ink,ink (medium),
+    dynamic brushstroke texture, intentional blank space,
+    soft ink bleeding effect, wuxia atmosphere, traditional shan shui composition,no text
+    ```
+    负面: 
+    ```
+    low quality, cartoonish, modern clothing,
+    photorealistic details, vibrant colors,
+    crowded elements, English text, anime eyes,
+    mechanical parts, perfect symmetry, oversaturated,text
+    ```
+
+浮世绘：
+    正面：
+    ```
+    2.0::Ukiyo-e ::,
+    1.5::Japanese woodblock print ::,
+    1.5::woodblock texture ::,
+    1.5::bijin-ga (beauty painting) ::,
+    1.5::Artist:Kitagawa Utamaro ::,
+    0.7::Artist:tedain ::,
+    Traditional Japanese art, flat colors, bold colors, strong outline, minimal shading, textured background,  intricate patterns, gold leaf accents, Edo period, muted colors, asymmetrical composition
+    ```
+    负面：
+    ```
+    low quality, cartoonish, modern clothing,
+    photorealistic details, vibrant colors,
+    crowded elements, English text, anime eyes,
+    mechanical parts, perfect symmetry, oversaturated
+    ```
+
+像素:
+    Q版：
+    ```
+    4::masterpiece, best quality ::, 4::pixel art,dithering,chibi ::, 1.95::artist:tedain ::,  1.55::Artist:nanami_yuki_(yuki77mi) ::, 1.55::artist:nobusawa_osamu ::,  0.65::artist:houkisei ::, -2::3D, realistic ::,  no text
+    ```
+    瑟瑟版：
+    ```
+    4::masterpiece, best quality ::, 4::pixel art,dithering ::, 1.95::artist:tedain ::,  1.55::Artist:nanami_yuki_(yuki77mi) ::, 1.55::artist:nobusawa_osamu ::,  0.65::artist:houkisei ::,0.45::artist:blue_gk ::,0.45::artist:kcccc ::, -2::3D, realistic ::,  no text
+    ```
